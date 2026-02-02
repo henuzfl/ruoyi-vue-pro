@@ -1,72 +1,136 @@
-package cn.iocoder.yudao.module.wm.dal.dataobject.orderdemand;
+package cn.iocoder.yudao.module.wm.dal.dataobject.purchaseorder;
 
-import lombok.*;
-import java.util.*;
-import java.math.BigDecimal;
-import java.math.BigDecimal;
-import java.math.BigDecimal;
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.LocalDateTime;
-import java.math.BigDecimal;
-import com.baomidou.mybatisplus.annotation.*;
 import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.*;
+
+import java.math.BigDecimal;
 
 /**
  * 订单追溯需求 DO
  *
  * @author 柳文
  */
-@TableName("trace_order_demand")
-@KeySequence("trace_order_demand_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OrderDemandDO extends BaseDO {
+public class PurchaseOrderDO extends BaseDO {
 
-    /**
-     * 编号
-     */
-    @TableId
-    private BigDecimal id;
-    /**
-     * 订单号
-     */
-    private String orderNo;
-    /**
-     * 追溯需求号
-     */
-    private String traceDemandNo;
-    /**
-     * 物料编码
-     */
-    private String materialNo;
-    /**
-     * 物料描述
-     */
-    private String materialDescription;
-    /**
-     * 需求数量
-     */
-    private BigDecimal demandQuantity;
-    /**
-     * 出库累计数
-     */
-    private BigDecimal outboundAccumulated;
-    /**
-     * 未清数量
-     */
-    private BigDecimal openQuantity;
-    /**
-     * 状态（0=待处理 1=部分完成 2=已完成）
-     */
-    private Short status;
-    /**
-     * 备注
-     */
-    private String remark;
+    private Boolean SELECTED;
+
+    private String WERKS;
+
+    private String BEDAT;
+
+    private String EBELN;
+
+    private String EBELP;
+
+    private String BSART;
+
+    private String EKGRP;
+
+    private String EKNAM;
+
+    private String LIFNR;
+
+    private String MATNR;
+
+    private String MAKTX;
+
+    private Double MENGE;
+
+    private String MEINS;
+
+    private Double NETPR;
+
+    private String WAERS;
+
+    private String EINDT;
+
+    private String MWSKZ;
+
+    private Double KBETR;
+
+    private String BEDNR;
+
+    private Double EMENGE;
+
+    private Double EMENGE1;
+
+    private String AUFNR;
+
+    private String LGORT;
+
+    private String BUDAT;
+
+    private String BELNR;
+
+    private String BUZEI;
+
+    private String SHKZG;
+
+    private String RETPO;
+
+    private String NAME1;
+
+    private String SGTXT;
+
+    private String LFBNR;
+
+    private String LFPOS;
+
+    private String SUBMI;
+
+    private String QMENGE;
+
+    private String QDMBTR;
+
+    private String QDATS;
+
+    private String QTIMS;
+
+    private String FBDATS;
+
+    private String ARROT;
+
+    private String DLDATS;
+
+    private String LTTYPE;
+
+    private String LTREAS;
+
+    private String COMMNT;
+
+    private String USRNM;
+
+    private String LTTYPE1;
+
+    private String LTREAS1;
+
+    private String COMMNT1;
+
+    private String CRTDAT1;
+
+    private String CRTTIM1;
+
+    private String USRNM1;
+
+    private Double TOTAL1;
+
+    private Double TOTAL2;
+
+    // 已创建未收货的数量
+    private Double ONPASSAGE;
+
+    // 拟发货数量
+    private Double CREATING;
+
+
 
 }

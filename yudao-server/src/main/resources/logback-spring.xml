@@ -6,6 +6,13 @@
     <!-- 格式化输出：%d 表示日期，%X{tid} SkWalking 链路追踪编号，%thread 表示线程名，%-5level：级别从左显示 5 个字符宽度，%msg：日志消息，%n是换行符 -->
     <property name="PATTERN_DEFAULT" value="%d{${LOG_DATEFORMAT_PATTERN:-yyyy-MM-dd HH:mm:ss.SSS}} | %highlight(${LOG_LEVEL_PATTERN:-%5p} ${PID:- }) | %boldYellow(%thread [%tid]) %boldGreen(%-40.40logger{39}) | %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
 
+    <!-- ========== 添加方案1的配置：忽略客户端连接中断错误 ========== -->
+    <!-- 忽略客户端连接中断相关的错误，降低日志噪音 -->
+    <logger name="org.springframework.web.context.request.async" level="WARN"/>
+    <logger name="cn.iocoder.yudao.framework.web.core.handler.GlobalExceptionHandler" level="WARN"/>
+    <logger name="org.apache.catalina.connector" level="WARN"/>
+    <!-- ========== 方案1配置结束 ========== -->
+
     <!-- 控制台 Appender -->
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">　　　　　
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">

@@ -15,11 +15,6 @@ import java.math.BigDecimal;
  *
  * @author 柳文
  */
-public interface IPurchaseOrderService {
-
-    /**
-     * 查询SAP采购订单
-     * 方法签名应尽量清晰，避免直接使用Map传参[citation:6]
-     */
-    Map<String, Object> findSapPurchaseOrder(String vendorNo, Date startDate, Date endDate, Map<String, Object> otherConditions);
+public interface ISapConfigService {
+    String getBaseCodeByType(String type);
 }

@@ -1,4 +1,4 @@
-package cn.iocoder.yudao.module.buyer.framework.web.config;
+package cn.iocoder.yudao.module.aps.framework.web.config;
 
 import cn.iocoder.yudao.framework.swagger.config.YudaoSwaggerAutoConfiguration;
 import org.springdoc.core.GroupedOpenApi;

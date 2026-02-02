@@ -9,10 +9,10 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <modules>
-        <module>yudao-module-aps-api</module>
-        <module>yudao-module-aps-biz</module>
+        <module>yudao-module-buyer-api</module>
+        <module>yudao-module-buyer-biz</module>
     </modules>
-    <artifactId>yudao-module-aps</artifactId>
+    <artifactId>yudao-module-buyer</artifactId>
     <packaging>pom</packaging>
     <dependencies>
         <!-- ORACLE相关 -->
@@ -29,7 +29,7 @@
     </dependencies>
     <name>${project.artifactId}</name>
     <description>
-        APS 模块，主要实现 工序计划 等功能。
+        buyer 模块，主要实现 采购 等功能。
     </description>
 
 </project>

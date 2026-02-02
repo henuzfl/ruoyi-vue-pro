@@ -1,4 +1,4 @@
-package cn.iocoder.yudao.module.wm.dal.dataobject.materialkittingtool;
+package cn.iocoder.yudao.module.wm.dal.dataobject.kittingmaster;
 
 import lombok.*;
 import java.util.*;
@@ -21,7 +21,7 @@ import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MaterialKittingToolDO extends BaseDO {
+public class KittingMasterDO extends BaseDO {
 
     /**
      * 生产订单号

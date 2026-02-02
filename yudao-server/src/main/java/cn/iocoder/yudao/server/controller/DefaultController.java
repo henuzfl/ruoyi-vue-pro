@@ -77,6 +77,7 @@ public class DefaultController {
                 "[IoT 物联网 yudao-module-iot - 已禁用][参考 https://doc.iocoder.cn/iot/build/ 开启]");
     }
 
+
     /**
      * 测试接口：打印 query、header、body
      */

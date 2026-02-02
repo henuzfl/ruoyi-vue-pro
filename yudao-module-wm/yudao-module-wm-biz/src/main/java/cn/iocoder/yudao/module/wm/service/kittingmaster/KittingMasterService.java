@@ -1,10 +1,10 @@
-package cn.iocoder.yudao.module.wm.service.materialkittingtool;
+package cn.iocoder.yudao.module.wm.service.kittingmaster;
 
 import java.math.BigDecimal;
 import java.util.*;
 import javax.validation.*;
-import cn.iocoder.yudao.module.wm.controller.admin.materialkittingtool.vo.*;
-import cn.iocoder.yudao.module.wm.dal.dataobject.materialkittingtool.MaterialKittingToolDO;
+import cn.iocoder.yudao.module.wm.controller.admin.kittingmaster.vo.*;
+import cn.iocoder.yudao.module.wm.dal.dataobject.kittingmaster.KittingMasterDO;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.pojo.PageParam;
 
@@ -13,7 +13,7 @@ import cn.iocoder.yudao.framework.common.pojo.PageParam;
  *
  * @author 柳文
  */
-public interface MaterialKittingToolService {
+public interface KittingMasterService {
 
 
     /**
@@ -22,7 +22,7 @@ public interface MaterialKittingToolService {
      * @param id 编号
      * @return 主计划
      */
-    MaterialKittingToolDO getMaterialKittingTool(BigDecimal id); // 这个方法需要实现
+    KittingMasterDO getKittingMaster(BigDecimal id); // 这个方法需要实现
 
 
     /**
@@ -31,6 +31,6 @@ public interface MaterialKittingToolService {
      * @param pageReqVO 分页查询
      * @return 主计划分页
      */
-    PageResult<MaterialKittingToolDO> selectMaterialKittingToolByParams(MaterialKittingToolPageReqVO pageReqVO);
+    PageResult<KittingMasterDO> selectKittingMasterByParams(KittingMasterPageReqVO pageReqVO);
 
 }

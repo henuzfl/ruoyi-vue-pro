@@ -1,10 +1,12 @@
 package cn.iocoder.yudao.module.wm.service.distributiontask;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.*;
 import cn.iocoder.yudao.module.wm.controller.admin.distributiontask.vo.*;
 import cn.iocoder.yudao.module.wm.dal.dataobject.distributiontask.DistributionTaskDO;
@@ -23,6 +25,7 @@ import static cn.iocoder.yudao.module.wm.enums.ErrorCodeConstants.*;
  * @author 柳文
  */
 @Service
+@DS("oracle") // 指定使用 Oracle 数据源
 @Validated
 public class DistributionTaskServiceImpl implements DistributionTaskService {
 

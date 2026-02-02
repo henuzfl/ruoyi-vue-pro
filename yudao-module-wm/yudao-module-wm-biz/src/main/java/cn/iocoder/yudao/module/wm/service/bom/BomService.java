@@ -7,50 +7,26 @@ import cn.iocoder.yudao.module.wm.dal.dataobject.distributiontask.DistributionTa
 
 import javax.validation.Valid;
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 /**
- * 配送任务下发 Service 接口
- *
- * @author 柳文
+ * BOM服务接口
  */
 public interface BomService {
 
     /**
-     * 创建配送任务下发
-     *
-     * @param createReqVO 创建信息
-     * @return 编号
+     * 从SAP获取BOM信息
+     * @param conditions 查询条件
+     * @return BOM组件列表
      */
-    BigDecimal createDistributionTask(@Valid DistributionTaskSaveReqVO createReqVO);
+    List<Map<String, Object>> getBomFromSap(Map<String, Object> conditions);
 
     /**
-     * 更新配送任务下发
-     *
-     * @param updateReqVO 更新信息
+     * 根据物料号获取BOM
+     * @param materialNumber 物料号
+     * @param plant 工厂
+     * @return BOM组件列表
      */
-    void updateDistributionTask(@Valid DistributionTaskSaveReqVO updateReqVO);
-
-    /**
-     * 删除配送任务下发
-     *
-     * @param id 编号
-     */
-    void deleteDistributionTask(BigDecimal id);
-
-    /**
-     * 获得配送任务下发
-     *
-     * @param id 编号
-     * @return 配送任务下发
-     */
-    DistributionTaskDO getDistributionTask(BigDecimal id);
-
-    /**
-     * 获得配送任务下发分页
-     *
-     * @param pageReqVO 分页查询
-     * @return 配送任务下发分页
-     */
-    PageResult<DistributionTaskDO> getDistributionTaskPage(DistributionTaskPageReqVO pageReqVO);
-
+    List<Map<String, Object>> getBomByMaterial(String materialNumber, String plant);
 }

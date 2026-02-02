@@ -6,6 +6,7 @@ import cn.iocoder.yudao.module.aps.controller.admin.plan.vo.*;
 import cn.iocoder.yudao.module.aps.dal.dataobject.plan.PlanDO;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.pojo.PageParam;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 
 /**
  * 设备调度 Service 接口
@@ -52,4 +53,12 @@ public interface PlanService {
      */
     PageResult<PlanDO> getPlanPage(PlanPageReqVO pageReqVO);
 
+    /**
+     * 执行计划
+     *
+     * @param
+     * @return 执行计划
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    void callUpdateStockProcedure();
 }

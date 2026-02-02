@@ -3,4 +3,4 @@
  *
  * @author 芋道源码
  */
-package cn.iocoder.yudao.module.aps.framework;
+package cn.iocoder.yudao.module.buyer.framework;

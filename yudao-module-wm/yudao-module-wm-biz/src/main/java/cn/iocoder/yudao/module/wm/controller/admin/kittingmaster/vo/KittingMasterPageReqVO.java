@@ -1,4 +1,4 @@
-package cn.iocoder.yudao.module.wm.controller.admin.materialkittingtool.vo;
+package cn.iocoder.yudao.module.wm.controller.admin.kittingmaster.vo;
 
 import lombok.*;
 import java.util.*;
@@ -14,7 +14,7 @@ import static cn.iocoder.yudao.framework.common.util.date.DateUtils.FORMAT_YEAR_
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class MaterialKittingToolPageReqVO extends PageParam {
+public class KittingMasterPageReqVO extends PageParam {
 
     @Schema(description = "生产订单号")
     private String productionOrderNo;

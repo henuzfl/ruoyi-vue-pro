@@ -92,4 +92,17 @@ public class PlanController {
                         BeanUtils.toBean(list, PlanRespVO.class));
     }
 
+    @PostMapping("/calculate")
+    @Operation(summary = "执行工序计划存储过程")
+    @PreAuthorize("@ss.hasPermission('aps:plan:calculate')")
+    public CommonResult<Boolean> calculateStock() {
+        try {
+            planService.callUpdateStockProcedure();
+            return success(true);
+        } catch (Exception e) {
+            // 这里应该记录日志，并根据业务需求返回适当的错误信息
+            return CommonResult.error(500, "调度计算失败: " + e.getMessage());
+        }
+    }
+
 }

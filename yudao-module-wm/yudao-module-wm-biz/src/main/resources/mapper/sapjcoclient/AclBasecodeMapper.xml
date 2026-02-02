@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="cn.iocoder.yudao.module.wm.dal.mysql.orderdemand.OrderDemandMapper">
+<mapper namespace="cn.iocoder.yudao.module.wm.dal.mysql.sapjcoclient.AclBasecodeMapper">
 
     <!--
         一般情况下，尽可能使用 Mapper 进行 CRUD 增删改查即可。
@@ -8,5 +8,17 @@
         代码生成器暂时只生成 Mapper XML 文件本身，更多推荐 MybatisX 快速开发插件来生成查询。
         文档可见：https://www.iocoder.cn/MyBatis/x-plugins/
      -->
+    <resultMap type="AclBasecodeDO" id="AclBasecodeResult">
+        <result property="type" column="TYPE"/>
+        <result property="code" column="CODE"/>
+    </resultMap>
 
+    <sql id="selectBasecodeVo">
+        select TYPE, CODE from vw_acl_basecode
+    </sql>
+
+    <select id="selectByType" parameterType="String" resultMap="AclBasecodeResult">
+        <include refid="selectBasecodeVo"/>
+        where TYPE = #{type}
+    </select>
 </mapper>

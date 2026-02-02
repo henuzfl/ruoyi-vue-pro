@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.buyer.service.buyertimestock;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
@@ -23,6 +24,7 @@ import static cn.iocoder.yudao.module.buyer.enums.ErrorCodeConstants.*;
  * @author 柳文
  */
 @Service
+@DS("oracle") // 指定使用 Oracle 数据源
 @Validated
 public class buyerTimeStockServiceImpl implements buyerTimeStockService {
 

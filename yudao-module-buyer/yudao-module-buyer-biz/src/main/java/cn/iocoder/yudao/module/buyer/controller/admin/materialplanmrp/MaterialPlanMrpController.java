@@ -1,4 +1,4 @@
-package cn.iocoder.yudao.module.aps.controller.admin.dataimport;
+package cn.iocoder.yudao.module.buyer.controller.admin.materialplanmrp;
 
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
@@ -25,71 +25,36 @@ import cn.iocoder.yudao.framework.excel.core.util.ExcelUtils;
 import cn.iocoder.yudao.framework.apilog.core.annotation.ApiAccessLog;
 import static cn.iocoder.yudao.framework.apilog.core.enums.OperateTypeEnum.*;
 
-import cn.iocoder.yudao.module.aps.controller.admin.dataimport.vo.*;
-import cn.iocoder.yudao.module.aps.dal.dataobject.dataimport.DataImportDO;
-import cn.iocoder.yudao.module.aps.service.dataimport.DataImportService;
+import cn.iocoder.yudao.module.buyer.controller.admin.materialplanmrp.vo.*;
+import cn.iocoder.yudao.module.buyer.dal.dataobject.materialplanmrp.MaterialPlanMrpDO;
+import cn.iocoder.yudao.module.buyer.service.materialplanmrp.MaterialPlanMrpService;
 
-@Tag(name = "管理后台 - 营销数据导入")
+@Tag(name = "管理后台 - 买家需求预测")
 @RestController
-@RequestMapping("/aps/data-import")
+@RequestMapping("/buyer/material-plan-mrp")
 @Validated
-public class DataImportController {
+public class MaterialPlanMrpController {
 
     @Resource
-    private DataImportService dataImportService;
-
-    @PostMapping("/create")
-    @Operation(summary = "创建营销数据导入")
-    @PreAuthorize("@ss.hasPermission('aps:data-import:create')")
-    public CommonResult<Short> createDataImport(@Valid @RequestBody DataImportSaveReqVO createReqVO) {
-        return success(dataImportService.createDataImport(createReqVO));
-    }
-
-    @PutMapping("/update")
-    @Operation(summary = "更新营销数据导入")
-    @PreAuthorize("@ss.hasPermission('aps:data-import:update')")
-    public CommonResult<Boolean> updateDataImport(@Valid @RequestBody DataImportSaveReqVO updateReqVO) {
-        dataImportService.updateDataImport(updateReqVO);
-        return success(true);
-    }
-
-    @DeleteMapping("/delete")
-    @Operation(summary = "删除营销数据导入")
-    @Parameter(name = "id", description = "编号", required = true)
-    @PreAuthorize("@ss.hasPermission('aps:data-import:delete')")
-    public CommonResult<Boolean> deleteDataImport(@RequestParam("id") Short id) {
-        dataImportService.deleteDataImport(id);
-        return success(true);
-    }
-
-    @GetMapping("/get")
-    @Operation(summary = "获得营销数据导入")
-    @Parameter(name = "id", description = "编号", required = true, example = "1024")
-    @PreAuthorize("@ss.hasPermission('aps:data-import:query')")
-    public CommonResult<DataImportRespVO> getDataImport(@RequestParam("id") Short id) {
-        DataImportDO dataImport = dataImportService.getDataImport(id);
-        return success(BeanUtils.toBean(dataImport, DataImportRespVO.class));
-    }
+    private MaterialPlanMrpService materialPlanMrpService;
 
     @GetMapping("/page")
-    @Operation(summary = "获得营销数据导入分页")
-    @PreAuthorize("@ss.hasPermission('aps:data-import:query')")
-    public CommonResult<PageResult<DataImportRespVO>> getDataImportPage(@Valid DataImportPageReqVO pageReqVO) {
-        PageResult<DataImportDO> pageResult = dataImportService.getDataImportPage(pageReqVO);
-        return success(BeanUtils.toBean(pageResult, DataImportRespVO.class));
+    @Operation(summary = "获得买家需求预测分页")
+    @PreAuthorize("@ss.hasPermission('buyer:material-plan-mrp:query')")
+    public CommonResult<PageResult<MaterialPlanMrpRespVO>> getMaterialPlanMrpPage(@Valid MaterialPlanMrpPageReqVO pageReqVO) {
+        PageResult<MaterialPlanMrpDO> pageResult = materialPlanMrpService.getMaterialPlanMrpPage(pageReqVO);
+        return success(BeanUtils.toBean(pageResult, MaterialPlanMrpRespVO.class));
     }
 
     @GetMapping("/export-excel")
-    @Operation(summary = "导出营销数据导入 Excel")
-    @PreAuthorize("@ss.hasPermission('aps:data-import:export')")
+    @Operation(summary = "导出买家需求预测 Excel")
+    @PreAuthorize("@ss.hasPermission('buyer:material-plan-mrp:export')")
     @ApiAccessLog(operateType = EXPORT)
-    public void exportDataImportExcel(@Valid DataImportPageReqVO pageReqVO,
-              HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        List<DataImportDO> list = dataImportService.getDataImportPage(pageReqVO).getList();
+    public void exportMaterialPlanMrpExcel(@Valid MaterialPlanMrpPageReqVO pageReqVO,
+                                           HttpServletResponse response) throws IOException {
+        List<MaterialPlanMrpDO> list = materialPlanMrpService.getMaterialPlanMrpExport(pageReqVO);
         // 导出 Excel
-        ExcelUtils.write(response, "营销数据导入.xls", "数据", DataImportRespVO.class,
-                        BeanUtils.toBean(list, DataImportRespVO.class));
+        ExcelUtils.write(response, "买家需求预测.xls", "数据", MaterialPlanMrpRespVO.class,
+                BeanUtils.toBean(list, MaterialPlanMrpRespVO.class));
     }
-
 }

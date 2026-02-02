@@ -1,4 +1,4 @@
-package cn.iocoder.yudao.module.system.enums;
+package cn.iocoder.yudao.module.buyer.enums;
 
 import cn.iocoder.yudao.framework.common.exception.ErrorCode;
 
@@ -167,6 +167,11 @@ public interface ErrorCodeConstants {
     ErrorCode NOTIFY_SEND_TEMPLATE_PARAM_MISS = new ErrorCode(1_002_028_000, "模板参数({})缺失");
 
     // ========== 计划模块 1-002-029-000 ==========
-    ErrorCode PLAN_NOT_EXISTS = new ErrorCode(1_002_029_000, "设备调度不存在");
-    ErrorCode DATA_IMPORT_NOT_EXISTS = new ErrorCode(1_002_030_000, "营销数据导入不存在");
+    ErrorCode BUYER_INPUT_NOT_EXISTS = new ErrorCode(1_003_001_000, "需求输入不存在");
+    ErrorCode BUYER_STOCK_NOT_EXISTS = new ErrorCode(1_003_002_000, "供应商库存不存在");
+    ErrorCode BUYER_SUPPLIER_BUYER_NOT_EXISTS = new ErrorCode(1_003_003_000, "物料供应商采购员对应不存在");
+    ErrorCode BUYER_TIME_STOCK_NOT_EXISTS = new ErrorCode(1_003_004_000, "实时库存不存在");
+    ErrorCode HOST_CONFIG_NOT_EXISTS = new ErrorCode(1_003_005_000, "营销主机配置不存在");
+    ErrorCode MATERIAL_FORECAST_NOT_EXISTS = new ErrorCode(1_003_006_000, "营销材料备料预测不存在");
+
 }

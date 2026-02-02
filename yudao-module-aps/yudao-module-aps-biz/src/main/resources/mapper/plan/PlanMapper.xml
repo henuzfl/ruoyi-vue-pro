@@ -8,5 +8,8 @@
         代码生成器暂时只生成 Mapper XML 文件本身，更多推荐 MybatisX 快速开发插件来生成查询。
         文档可见：https://www.iocoder.cn/MyBatis/x-plugins/
      -->
-
+    <!-- 调用无返回值的存储过程 -->
+    <update id="callUpdateStockProcedure" statementType="CALLABLE">
+        {call ${schema}.generate_schedule_v1()}
+    </update>
 </mapper>

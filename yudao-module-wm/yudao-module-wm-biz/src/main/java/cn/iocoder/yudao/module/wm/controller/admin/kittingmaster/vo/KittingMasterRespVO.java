@@ -1,4 +1,4 @@
-package cn.iocoder.yudao.module.wm.controller.admin.materialkittingtool.vo;
+package cn.iocoder.yudao.module.wm.controller.admin.kittingmaster.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
@@ -11,7 +11,7 @@ import com.alibaba.excel.annotation.*;
 @Schema(description = "管理后台 - 主计划 Response VO")
 @Data
 @ExcelIgnoreUnannotated
-public class MaterialKittingToolRespVO {
+public class KittingMasterRespVO {
 
     @Schema(description = "主键ID", requiredMode = Schema.RequiredMode.REQUIRED, example = "9944")
     @ExcelProperty("主键ID")

@@ -29,7 +29,7 @@ import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class buyerMateriaDO extends BaseDO {
+public class buyerMaterialDO extends BaseDO {
 
     /**
      * 需求物料
@@ -86,11 +86,31 @@ public class buyerMateriaDO extends BaseDO {
     private BigDecimal compDemandQty;
 
     /**
-     * 备料数量
+     * 备料数量本月
      */
-    @TableField("prepared_qty")
-    private BigDecimal preparedQty;
+    @TableField("prepared_qty_month1")
+    private BigDecimal preparedQty1;
 
+    /**
+     * 备料数量本月
+     */
+    @TableField("prepared_qty_month2")
+    private BigDecimal preparedQty2;
+    /**
+     * 备料数量本月
+     */
+    @TableField("prepared_qty_month3")
+    private BigDecimal preparedQty3;
+    /**
+     * 备料数量本月
+     */
+    @TableField("prepared_qty_month4")
+    private BigDecimal preparedQty4;
+    /**
+     * 备料数量本月
+     */
+    @TableField("prepared_qty_month5")
+    private BigDecimal preparedQty5;
     /**
      * 实时库存
      */
@@ -132,4 +152,10 @@ public class buyerMateriaDO extends BaseDO {
      */
     @TableField("demand_month")
     private String demandMonth;
+
+    /**
+     * 租户
+     */
+    @TableField("tenant_id")
+    private String tenantId;
 }

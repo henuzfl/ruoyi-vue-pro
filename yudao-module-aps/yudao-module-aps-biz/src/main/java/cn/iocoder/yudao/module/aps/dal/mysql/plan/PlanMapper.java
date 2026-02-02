@@ -6,7 +6,9 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
 import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
 import cn.iocoder.yudao.module.aps.dal.dataobject.plan.PlanDO;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param; // 添加这个导入
 import cn.iocoder.yudao.module.aps.controller.admin.plan.vo.*;
 
 /**
@@ -39,5 +41,8 @@ public interface PlanMapper extends BaseMapperX<PlanDO> {
                 .betweenIfPresent(PlanDO::getCreateTime, reqVO.getCreateTime())
                 .orderByDesc(PlanDO::getId));
     }
+    // 添加存储过程调用方法
+    @InterceptorIgnore(tenantLine = "true")
+    void callUpdateStockProcedure(@Param("schema") String schema);
 
 }

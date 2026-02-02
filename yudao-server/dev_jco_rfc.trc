@@ -1,0 +1,257 @@
+
+**** Error file opened at 20260202 112712 China Standard Time Rel. 3.0.19 (2018-12-03) [721.1120]
+Error:  >Mon Feb 02 11:27:12,510<    RfcException:
+	message: Connect to SAP gateway failed
+Connection parameters: TYPE=A DEST=SAP_RUOYI_DEST ASHOST=172.30.1.52 SYSNR=02 PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       partner '172.30.1.52:3302' not reached
+TIME        Mon Feb 02 11:27:12 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -10
+MODULE      nixxi.cpp
+LINE        3289
+DETAIL      NiPConnect2: 172.30.1.52:3302
+SYSTEM CALL connect
+ERRNO       10061
+ERRNO TEXT  WSAECONNREFUSED: Connection refused
+COUNTER     2
+
+	return code: RFC_FAILURE (1)
+	error group: 102
+	key: RFC_ERROR_COMMUNICATION
+
+
+**** Error file opened at 20260202 134706 China Standard Time Rel. 3.0.19 (2018-12-03) [721.1120]
+Error:  >Mon Feb 02 13:47:06,385<    RfcException:
+	message: Connect to SAP gateway failed
+Connection parameters: TYPE=A DEST=SAP_RUOYI_DEST ASHOST=172.30.1.52 SYSNR=02 PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       partner '172.30.1.52:3302' not reached
+TIME        Mon Feb 02 13:47:06 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -10
+MODULE      nixxi.cpp
+LINE        3289
+DETAIL      NiPConnect2: 172.30.1.52:3302
+SYSTEM CALL connect
+ERRNO       10061
+ERRNO TEXT  WSAECONNREFUSED: Connection refused
+COUNTER     2
+
+	return code: RFC_FAILURE (1)
+	error group: 102
+	key: RFC_ERROR_COMMUNICATION
+
+
+**** Error file opened at 20260202 135617 China Standard Time Rel. 3.0.19 (2018-12-03) [721.1120]
+Error:  >Mon Feb 02 13:56:17,350<    RfcException:
+	message: Logon group "PUBLIC" not found by message server on host 172.30.1.52
+Connection parameters: TYPE=B DEST=SAP_RUOYI_DEST MSHOST=172.30.1.52 MSSERV=3600 R3NAME=S4D GROUP=PUBLIC PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host DESKTOP-0201DJB with Unicode
+ERROR       Group PUBLIC not found
+TIME        Mon Feb 02 13:56:17 2026
+RELEASE     721
+COMPONENT   LG
+VERSION     5
+RC          -6
+MODULE      lgxx.c
+LINE        5354
+DETAIL      LgIGroupRereadMs
+COUNTER     1
+
+	return code: RFC_FAILURE (1)
+	error group: 102
+	key: RFC_ERROR_COMMUNICATION
+
+
+**** Error file opened at 20260202 144431 China Standard Time Rel. 3.0.19 (2018-12-03) [721.1120]
+Error:  >Mon Feb 02 14:44:31,855<    >RfcGetException (rc=3) message: CPIC-CALL: CMRCV on convId: 44574145
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       connection to partner '172.30.1.31:3302' broken
+TIME        Mon Feb 02 14:44:31 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -6
+MODULE      nixxi.cpp
+LINE        5088
+DETAIL      NiIRead: P=172.30.1.31:3302; L=192.168.1.101:5808
+SYSTEM CALL recv
+ERRNO       10054
+ERRNO TEXT  WSAECONNRESET: Connection reset by peer
+COUNTER     5
+
+<RfcGetException
+
+
+Error: [1] >Mon Feb 02 14:44:31,860<    RfcException raised by system [EP1|ZLSAPS4P01|02]:
+	message: CPIC-CALL: CMRCV on convId: 44574145
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       connection to partner '172.30.1.31:3302' broken
+TIME        Mon Feb 02 14:44:31 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -6
+MODULE      nixxi.cpp
+LINE        5088
+DETAIL      NiIRead: P=172.30.1.31:3302; L=192.168.1.101:5808
+SYSTEM CALL recv
+ERRNO       10054
+ERRNO TEXT  WSAECONNRESET: Connection reset by peer
+COUNTER     5
+
+	return code: RFC_SYS_EXCEPTION (3)
+	error group: 102
+	key: RFC_ERROR_COMMUNICATION
+
+
+**** Error file opened at 20260202 155638 China Standard Time Rel. 3.0.19 (2018-12-03) [721.1120]
+Error:  >Mon Feb 02 15:56:38,750<    >RfcGetException (rc=3) message: CPIC-CALL: CMRCV on convId: 48317738
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       connection to partner '172.30.1.31:3302' broken
+TIME        Mon Feb 02 15:56:38 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -6
+MODULE      nixxi.cpp
+LINE        5088
+DETAIL      NiIRead: P=172.30.1.31:3302; L=192.168.1.101:10844
+SYSTEM CALL recv
+ERRNO       10054
+ERRNO TEXT  WSAECONNRESET: Connection reset by peer
+COUNTER     6
+
+<RfcGetException
+
+
+Error: [1] >Mon Feb 02 15:56:38,756<    RfcException raised by system [EP1|ZLSAPS4P01|02]:
+	message: CPIC-CALL: CMRCV on convId: 48317738
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       connection to partner '172.30.1.31:3302' broken
+TIME        Mon Feb 02 15:56:38 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -6
+MODULE      nixxi.cpp
+LINE        5088
+DETAIL      NiIRead: P=172.30.1.31:3302; L=192.168.1.101:10844
+SYSTEM CALL recv
+ERRNO       10054
+ERRNO TEXT  WSAECONNRESET: Connection reset by peer
+COUNTER     6
+
+	return code: RFC_SYS_EXCEPTION (3)
+	error group: 102
+	key: RFC_ERROR_COMMUNICATION
+
+Error:  >Mon Feb 02 15:57:09,815<    RfcException:
+	message: Connect to SAP gateway failed
+Connection parameters: TYPE=B DEST=SAP_RUOYI_DEST MSHOST=172.30.1.52 MSSERV=3600 R3NAME=EP1 GROUP=PRD PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       partner '172.30.1.31:3302' not reached
+TIME        Mon Feb 02 15:57:09 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -10
+MODULE      nixxi.cpp
+LINE        3289
+DETAIL      NiPConnect2: 172.30.1.31:3302
+SYSTEM CALL connect
+ERRNO       10060
+ERRNO TEXT  WSAETIMEDOUT: Connection timed out
+COUNTER     9
+
+	return code: RFC_FAILURE (1)
+	error group: 102
+	key: RFC_ERROR_COMMUNICATION
+
+Error:  >Mon Feb 02 15:57:40,847<    RfcException:
+	message: Connect to SAP gateway failed
+Connection parameters: TYPE=B DEST=SAP_RUOYI_DEST MSHOST=172.30.1.52 MSSERV=3600 R3NAME=EP1 GROUP=PRD PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       partner '172.30.1.31:3302' not reached
+TIME        Mon Feb 02 15:57:40 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+RC          -10
+MODULE      nixxi.cpp
+LINE        3289
+DETAIL      NiPConnect2: 172.30.1.31:3302
+SYSTEM CALL connect
+ERRNO       10060
+ERRNO TEXT  WSAETIMEDOUT: Connection timed out
+COUNTER     12
+
+	return code: RFC_FAILURE (1)
+	error group: 102
+	key: RFC_ERROR_COMMUNICATION
+
+Error:  >Mon Feb 02 15:57:50,865<    RfcException:
+	message: Connect to message server on host 172.30.1.52 failed
+Connection parameters: TYPE=B DEST=SAP_RUOYI_DEST MSHOST=172.30.1.52 MSSERV=3600 R3NAME=EP1 GROUP=PRD PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       *** ERROR ***
+TIME        Mon Feb 02 15:57:50 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+DETAIL      NiErrSet
+COUNTER     13
+
+	return code: RFC_FAILURE (1)
+	error group: 102
+	key: RFC_ERROR_COMMUNICATION
+
+Error:  >Mon Feb 02 15:58:00,874<    RfcException:
+	message: Connect to message server on host 172.30.1.52 failed
+Connection parameters: TYPE=B DEST=SAP_RUOYI_DEST MSHOST=172.30.1.52 MSSERV=3600 R3NAME=EP1 GROUP=PRD PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       *** ERROR ***
+TIME        Mon Feb 02 15:57:50 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+DETAIL      NiErrSet
+COUNTER     13
+
+	return code: RFC_FAILURE (1)
+	error group: 102
+	key: RFC_ERROR_COMMUNICATION
+
+Error:  >Mon Feb 02 15:58:10,877<    RfcException:
+	message: Connect to message server on host 172.30.1.52 failed
+Connection parameters: TYPE=B DEST=SAP_RUOYI_DEST MSHOST=172.30.1.52 MSSERV=3600 R3NAME=EP1 GROUP=PRD PCS=1
+
+LOCATION    CPIC (TCP/IP) on local host with Unicode
+ERROR       *** ERROR ***
+TIME        Mon Feb 02 15:57:50 2026
+RELEASE     721
+COMPONENT   NI (network interface)
+VERSION     40
+DETAIL      NiErrSet
+COUNTER     13
+
+	return code: RFC_FAILURE (1)
+	error group: 102
+	key: RFC_ERROR_COMMUNICATION
+

@@ -1,5 +1,9 @@
 package cn.iocoder.yudao.module.aps.service.plan;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.jdbc.Null;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
@@ -15,7 +19,7 @@ import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.module.aps.dal.mysql.plan.PlanMapper;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
-import static cn.iocoder.yudao.module.aps.enums.ErrorCodeConstants.*;
+import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.*;
 
 /**
  * 设备调度 Service 实现类
@@ -23,7 +27,9 @@ import static cn.iocoder.yudao.module.aps.enums.ErrorCodeConstants.*;
  * @author 芋道源码
  */
 @Service
+@DS("oracle") // 指定使用 Oracle 数据源
 @Validated
+@Slf4j
 public class PlanServiceImpl implements PlanService {
 
     @Resource
@@ -71,4 +77,21 @@ public class PlanServiceImpl implements PlanService {
         return planMapper.selectPage(pageReqVO);
     }
 
+
+    @Override
+    @Transactional
+    public void callUpdateStockProcedure() {
+        try {
+            log.info("开始调用存储过程 SYSTEM.generate_schedule_v1()");
+            planMapper.callUpdateStockProcedure("SYSTEM");
+            log.info("存储过程调用成功");
+        } catch (Exception e) {
+            log.error("存储过程调用失败", e);
+            // 打印详细的错误信息
+            if (e.getCause() != null) {
+                log.error("根本原因: {}", e.getCause().getMessage());
+            }
+            throw new RuntimeException("调度计算失败: " + e.getMessage(), e);
+        }
+    }
 }

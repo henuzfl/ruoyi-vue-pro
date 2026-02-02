@@ -8,14 +8,14 @@ import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Schema(description = "管理后台 - 需求输入 Response VO")
+@Schema(description = "管理后台 - 备料明细汇总 Response VO")
 @Data
 @ExcelIgnoreUnannotated
-public class buyerInputRespVO {
+public class buyerMaterialRespVO {
 
-    @Schema(description = "主键编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "5730")
-    @ExcelProperty("主键编号")
-    private Long id;
+    @Schema(description = "需求物料", requiredMode = Schema.RequiredMode.REQUIRED)
+    @ExcelProperty("需求物料")
+    private String reqMaterial;
 
     @Schema(description = "客户", requiredMode = Schema.RequiredMode.REQUIRED)
     @ExcelProperty("客户")
@@ -25,28 +25,59 @@ public class buyerInputRespVO {
     @ExcelProperty("车型")
     private String vehicleModel;
 
-    @Schema(description = "总成物料", requiredMode = Schema.RequiredMode.REQUIRED)
-    @ExcelProperty("总成物料")
-    private String assemblyMaterial;
-
-    @Schema(description = "总成数量", requiredMode = Schema.RequiredMode.REQUIRED)
-    @ExcelProperty("总成数量")
+    @Schema(description = "总成需求数量", requiredMode = Schema.RequiredMode.REQUIRED)
+    @ExcelProperty("总成需求数量")
     private BigDecimal assemblyQuantity;
+
+    @Schema(description = "采购子件物料", requiredMode = Schema.RequiredMode.REQUIRED)
+    @ExcelProperty("采购子件物料")
+    private String compMaterial;
+
+    @Schema(description = "采购子件描述")
+    @ExcelProperty("采购子件描述")
+    private String compDesc;
+
+    @Schema(description = "规格型号")
+    @ExcelProperty("规格型号")
+    private String specModel;
+
+    @Schema(description = "单台用量", requiredMode = Schema.RequiredMode.REQUIRED)
+    @ExcelProperty("单台用量")
+    private BigDecimal unitUsage;
+
+    @Schema(description = "组件需求数量", requiredMode = Schema.RequiredMode.REQUIRED)
+    @ExcelProperty("组件需求数量")
+    private BigDecimal compDemandQty;
+
+    @Schema(description = "备料数量", requiredMode = Schema.RequiredMode.REQUIRED)
+    @ExcelProperty("备料数量")
+    private BigDecimal preparedQty;
+
+    @Schema(description = "实时库存", requiredMode = Schema.RequiredMode.REQUIRED)
+    @ExcelProperty("实时库存")
+    private BigDecimal stockQty;
+
+    @Schema(description = "差值", requiredMode = Schema.RequiredMode.REQUIRED)
+    @ExcelProperty("差值")
+    private BigDecimal difference;
+
+    @Schema(description = "库存状态", requiredMode = Schema.RequiredMode.REQUIRED)
+    @ExcelProperty("库存状态")
+    private String stockStatus;
+
+    @Schema(description = "供应商")
+    @ExcelProperty("供应商")
+    private String supplier;
+
+    @Schema(description = "采购员")
+    @ExcelProperty("采购员")
+    private String buyer;
+
+    @Schema(description = "采购组")
+    @ExcelProperty("采购组")
+    private String procGroup;
 
     @Schema(description = "需求月份")
     @ExcelProperty("需求月份")
     private String demandMonth;
-
-    @Schema(description = "状态（0=正常，1=停用）", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
-    @ExcelProperty("状态（0=正常，1=停用）")
-    private Short status;
-
-    @Schema(description = "备注", example = "你说的对")
-    @ExcelProperty("备注")
-    private String remark;
-
-    @Schema(description = "创建时间")
-    @ExcelProperty("创建时间")
-    private LocalDateTime createTime;
-
 }

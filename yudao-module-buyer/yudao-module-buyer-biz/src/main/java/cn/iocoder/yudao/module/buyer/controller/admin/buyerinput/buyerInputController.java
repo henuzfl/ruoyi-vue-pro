@@ -73,7 +73,7 @@ public class buyerInputController {
 
     @GetMapping("/page")
     @Operation(summary = "获得需求输入分页")
-    @PreAuthorize("@ss.hasPermission('buyer:buyer-input:query')")
+    //@PreAuthorize("@ss.hasPermission('buyer:buyer-input:query')")
     public CommonResult<PageResult<buyerInputRespVO>> getbuyerInputPage(@Valid buyerInputPageReqVO pageReqVO) {
         PageResult<buyerInputDO> pageResult = buyerInputService.getbuyerInputPage(pageReqVO);
         return success(BeanUtils.toBean(pageResult, buyerInputRespVO.class));

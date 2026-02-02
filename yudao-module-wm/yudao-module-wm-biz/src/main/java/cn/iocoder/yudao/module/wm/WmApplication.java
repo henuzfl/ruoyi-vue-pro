@@ -1,4 +1,4 @@
-package cn.iocoder.yudao.server;
+package cn.iocoder.yudao.module.wm;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

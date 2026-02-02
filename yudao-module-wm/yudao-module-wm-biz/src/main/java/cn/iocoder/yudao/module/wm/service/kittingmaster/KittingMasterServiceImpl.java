@@ -1,5 +1,6 @@
-package cn.iocoder.yudao.module.wm.service.materialkittingtool;
+package cn.iocoder.yudao.module.wm.service.kittingmaster;
 
+import cn.iocoder.yudao.module.wm.service.kittingmaster.KittingMasterService;
 import com.baomidou.dynamic.datasource.annotation.DS;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -8,11 +9,11 @@ import org.springframework.validation.annotation.Validated;
 
 import java.math.BigDecimal;
 import java.util.*;
-import cn.iocoder.yudao.module.wm.controller.admin.materialkittingtool.vo.*;
-import cn.iocoder.yudao.module.wm.dal.dataobject.materialkittingtool.MaterialKittingToolDO;
+import cn.iocoder.yudao.module.wm.controller.admin.kittingmaster.vo.*;
+import cn.iocoder.yudao.module.wm.dal.dataobject.kittingmaster.KittingMasterDO;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 
-import cn.iocoder.yudao.module.wm.dal.mysql.materialkittingtool.MaterialKittingToolMapper;
+import cn.iocoder.yudao.module.wm.dal.mysql.kittingmaster.KittingMasterMapper;
 
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.wm.enums.ErrorCodeConstants.*;
@@ -26,15 +27,15 @@ import static cn.iocoder.yudao.module.wm.enums.ErrorCodeConstants.*;
 @DS("oracle") // 指定使用 Oracle 数据源
 @Validated
 @Slf4j
-public class MaterialKittingToolServiceImpl implements MaterialKittingToolService {
+public class KittingMasterServiceImpl implements KittingMasterService {
 
     @Resource
-    private MaterialKittingToolMapper materialKittingToolMapper;
+    private KittingMasterMapper kittingMasterMapper;
 
     @Override
-    public PageResult<MaterialKittingToolDO> selectMaterialKittingToolByParams(MaterialKittingToolPageReqVO pageReqVO) {
+    public PageResult<KittingMasterDO> selectKittingMasterByParams(KittingMasterPageReqVO pageReqVO) {
         // 调试：检查日期参数
-        log.info("=== 参数调试开始 ===");
+        log.info("=== 参数齐套调试开始 ===");
         log.info("接收到的 scheduledDate 数组: {}", Arrays.toString(pageReqVO.getScheduledDate()));
 
         if (pageReqVO.getScheduledDate() != null && pageReqVO.getScheduledDate().length >= 2) {
@@ -48,7 +49,7 @@ public class MaterialKittingToolServiceImpl implements MaterialKittingToolServic
         log.info("=== 参数调试结束 ===");
 
         // 直接传入 VO 对象
-        List<MaterialKittingToolDO> list = materialKittingToolMapper.selectMaterialKittingToolByParams(pageReqVO);
+        List<KittingMasterDO> list = kittingMasterMapper.selectKittingMasterByParams(pageReqVO);
 
         log.info("查询结果数量: {}", list.size());
 
@@ -56,7 +57,7 @@ public class MaterialKittingToolServiceImpl implements MaterialKittingToolServic
         if (!list.isEmpty()) {
             log.info("=== 详细数据字段调试开始 ===");
             for (int i = 0; i < Math.min(3, list.size()); i++) {
-                MaterialKittingToolDO item = list.get(i);
+                KittingMasterDO item = list.get(i);
                 log.info("数据 {} 详细字段:", i + 1);
                 log.info("  productionOrderNo: {} (类型: {})",
                         item.getProductionOrderNo(),
@@ -123,12 +124,12 @@ public class MaterialKittingToolServiceImpl implements MaterialKittingToolServic
             return new PageResult<>(Collections.emptyList(), (long) total);
         }
 
-        List<MaterialKittingToolDO> pageList = list.subList(fromIndex, toIndex);
+        List<KittingMasterDO> pageList = list.subList(fromIndex, toIndex);
         return new PageResult<>(pageList, (long) total);
     }
 
     @Override
-    public MaterialKittingToolDO getMaterialKittingTool(BigDecimal id) {
+    public KittingMasterDO getKittingMaster(BigDecimal id) {
         // 根据你的业务逻辑实现这个方法
         // 例如：根据 ID 查询单个齐套分析记录
         // 如果这个方法暂时不需要，可以返回 null 或者抛出异常
@@ -137,7 +138,7 @@ public class MaterialKittingToolServiceImpl implements MaterialKittingToolServic
         return null;
 
         // 或者如果你需要具体实现：
-        // return materialKittingToolMapper.selectById(id);
+        // return kittingMasterMapper.selectById(id);
     }
 
     // 如果接口中还有其他方法，也需要在这里实现

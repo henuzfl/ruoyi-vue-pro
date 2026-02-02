@@ -220,7 +220,7 @@ public class OAuth2OpenController {
                                               @RequestParam(value = "state", required = false) String state) {
         @SuppressWarnings("unchecked")
         Map<String, Boolean> scopes = JsonUtils.parseObject(scope, Map.class);
-        scopes = ObjectUtil.defaultIfNull(scopes, Collections.emptyMap());
+        scopes = ObjectUtil.defaultIfNull(scopes, Collections.<String, Boolean>emptyMap());
         // 0. 校验用户已经登录。通过 Spring Security 实现
 
         // 1.1 校验 responseType 是否满足 code 或者 token 值

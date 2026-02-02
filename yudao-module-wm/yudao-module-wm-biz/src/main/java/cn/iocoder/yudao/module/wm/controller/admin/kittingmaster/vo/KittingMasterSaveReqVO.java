@@ -1,4 +1,4 @@
-package cn.iocoder.yudao.module.wm.controller.admin.materialkittingtool.vo;
+package cn.iocoder.yudao.module.wm.controller.admin.kittingmaster.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 
 @Schema(description = "管理后台 - 主计划新增/修改 Request VO")
 @Data
-public class MaterialKittingToolSaveReqVO {
+public class KittingMasterSaveReqVO {
 
     @Schema(description = "主键ID", requiredMode = Schema.RequiredMode.REQUIRED, example = "9944")
     private BigDecimal id;

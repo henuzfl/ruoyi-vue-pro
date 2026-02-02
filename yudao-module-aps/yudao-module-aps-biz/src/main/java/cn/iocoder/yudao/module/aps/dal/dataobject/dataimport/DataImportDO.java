@@ -17,7 +17,7 @@ import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
  * @author 柳文
  */
 @TableName("marketing_data_import")
-@KeySequence("marketing_data_import_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
+@KeySequence("SEQ_MARKETING_DATA_IMPORT_ID") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)

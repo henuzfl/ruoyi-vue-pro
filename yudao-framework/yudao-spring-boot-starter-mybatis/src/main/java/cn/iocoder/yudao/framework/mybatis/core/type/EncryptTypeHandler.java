@@ -26,25 +26,29 @@ public class EncryptTypeHandler extends BaseTypeHandler<String> {
 
     @Override
     public void setNonNullParameter(PreparedStatement ps, int i, String parameter, JdbcType jdbcType) throws SQLException {
-        ps.setString(i, encrypt(parameter));
+        ps.setString(i, parameter); // 直接存储明文
+        //ps.setString(i, encrypt(parameter)); 编译报错
     }
 
     @Override
     public String getNullableResult(ResultSet rs, String columnName) throws SQLException {
-        String value = rs.getString(columnName);
-        return decrypt(value);
+        /**String value = rs.getString(columnName);
+        return decrypt(value);  编译报错**/
+        return rs.getString(columnName); // 直接返回明文
     }
 
     @Override
     public String getNullableResult(ResultSet rs, int columnIndex) throws SQLException {
-        String value = rs.getString(columnIndex);
-        return decrypt(value);
+        /**String value = rs.getString(columnIndex);
+        return decrypt(value);编译报错**/
+        return rs.getString(columnIndex);
     }
 
     @Override
     public String getNullableResult(CallableStatement cs, int columnIndex) throws SQLException {
-        String value = cs.getString(columnIndex);
-        return decrypt(value);
+        /**String value = cs.getString(columnIndex);
+        return decrypt(value);编译报错**/
+        return cs.getString(columnIndex);
     }
 
     private static String decrypt(String value) {

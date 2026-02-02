@@ -1,5 +1,6 @@
-package cn.iocoder.yudao.module.wm.controller.admin.materialkittingtool;
+package cn.iocoder.yudao.module.wm.controller.admin.kittingmaster;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
@@ -26,52 +27,54 @@ import cn.iocoder.yudao.framework.excel.core.util.ExcelUtils;
 import cn.iocoder.yudao.framework.apilog.core.annotation.ApiAccessLog;
 import static cn.iocoder.yudao.framework.apilog.core.enums.OperateTypeEnum.*;
 
-import cn.iocoder.yudao.module.wm.controller.admin.materialkittingtool.vo.*;
-import cn.iocoder.yudao.module.wm.dal.dataobject.materialkittingtool.MaterialKittingToolDO;
-import cn.iocoder.yudao.module.wm.service.materialkittingtool.MaterialKittingToolService;
+import cn.iocoder.yudao.module.wm.controller.admin.kittingmaster.vo.*;
+import cn.iocoder.yudao.module.wm.dal.dataobject.kittingmaster.KittingMasterDO;
+import cn.iocoder.yudao.module.wm.service.kittingmaster.KittingMasterService;
 
-@Tag(name = "管理后台 - 齐套工具")
+@Tag(name = "管理后台 - 订单齐套工具")
 @RestController
-@RequestMapping("/wm/material-kitting-tool")
+@RequestMapping("/wm/kitting-master")
 @Validated
-public class MaterialKittingToolController {
+@Slf4j
+public class KittingMasterController {
 
     @Resource
-    private MaterialKittingToolService materialKittingToolService;
+    private KittingMasterService kittingMasterService;
 
 
     @GetMapping("/get")
     @Operation(summary = "获得齐套工具")
     @Parameter(name = "id", description = "编号", required = true, example = "1024")
-    @PreAuthorize("@ss.hasPermission('wm:material-kitting-tool:query')")
-    public CommonResult<MaterialKittingToolRespVO> getMaterialKittingTool(@RequestParam("id") BigDecimal id) {
-        MaterialKittingToolDO materialKittingTool = materialKittingToolService.getMaterialKittingTool(id);
-        return success(BeanUtils.toBean(materialKittingTool, MaterialKittingToolRespVO.class));
+    @PreAuthorize("@ss.hasPermission('wm:kitting-master:query')")
+    public CommonResult<KittingMasterRespVO> getKittingMaster(@RequestParam("id") BigDecimal id) {
+        KittingMasterDO kittingMaster = kittingMasterService.getKittingMaster(id);
+        return success(BeanUtils.toBean(kittingMaster, KittingMasterRespVO.class));
     }
 
     @GetMapping("/page")
     @Operation(summary = "获得齐套工具分页")
-    @PreAuthorize("@ss.hasPermission('wm:material-kitting-tool:query')")
-    public CommonResult<PageResult<MaterialKittingToolRespVO>> getMaterialKittingToolPage(@Valid MaterialKittingToolPageReqVO pageReqVO) {
-        PageResult<MaterialKittingToolDO> pageResult = materialKittingToolService.selectMaterialKittingToolByParams(pageReqVO);
+    @PreAuthorize("@ss.hasPermission('wm:kitting-master:query')")
+    public CommonResult<PageResult<KittingMasterRespVO>> getKittingMasterPage(@Valid KittingMasterPageReqVO pageReqVO) {
+        log.info("=== 齐套 ===");
+        PageResult<KittingMasterDO> pageResult = kittingMasterService.selectKittingMasterByParams(pageReqVO);
 
         // 将 DO 转换为 RespVO
-        PageResult<MaterialKittingToolRespVO> voPageResult = BeanUtils.toBean(pageResult, MaterialKittingToolRespVO.class);
+        PageResult<KittingMasterRespVO> voPageResult = BeanUtils.toBean(pageResult, KittingMasterRespVO.class);
 
         return success(voPageResult);
     }
 
     @GetMapping("/export-excel")
     @Operation(summary = "导出齐套工具 Excel")
-    @PreAuthorize("@ss.hasPermission('wm:material-kitting-tool:export')")
+    @PreAuthorize("@ss.hasPermission('wm:kitting-master:export')")
     @ApiAccessLog(operateType = EXPORT)
-    public void exportMaterialKittingToolExcel(@Valid MaterialKittingToolPageReqVO pageReqVO,
+    public void exportKittingMasterExcel(@Valid KittingMasterPageReqVO pageReqVO,
               HttpServletResponse response) throws IOException {
         pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        List<MaterialKittingToolDO> list = materialKittingToolService.selectMaterialKittingToolByParams(pageReqVO).getList();
+        List<KittingMasterDO> list = kittingMasterService.selectKittingMasterByParams(pageReqVO).getList();
         // 导出 Excel
-        ExcelUtils.write(response, "齐套工具.xls", "数据", MaterialKittingToolRespVO.class,
-                        BeanUtils.toBean(list, MaterialKittingToolRespVO.class));
+        ExcelUtils.write(response, "订单齐套工具.xls", "数据", KittingMasterRespVO.class,
+                        BeanUtils.toBean(list, KittingMasterRespVO.class));
     }
 
 }

@@ -1,5 +1,6 @@
 server:
   port: 48080
+  address: 0.0.0.0  # 改为 0.0.0.0 监听所有地址
 
 --- #################### 数据库相关配置 ####################
 spring:
@@ -48,7 +49,8 @@ spring:
       primary: master
       datasource:
         master:
-          url: jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true # MySQL Connector/J 8.X 连接的示例
+          #url: jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true # MySQL Connector/J 8.X 连接的示例
+          url: jdbc:mysql://10.47.0.162:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&nullCatalogMeansCurrent=true&rewriteBatchedStatements=true # MySQL Connector/J 8.X 连接的示例
           #          url: jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=true&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&rewriteBatchedStatements=true # MySQL Connector/J 5.X 连接的示例
           #          url: jdbc:postgresql://127.0.0.1:5432/ruoyi-vue-pro # PostgreSQL 连接的示例
           #          url: jdbc:oracle:thin:@127.0.0.1:1521:xe # Oracle 连接的示例
@@ -64,12 +66,25 @@ spring:
           #          password: SYSDBA001 # DM 连接的示例
           #          username: root # OpenGauss 连接的示例
           #          password: Yudao@2024 # OpenGauss 连接的示例
-        slave: # 模拟从库，可根据自己需要修改
-          lazy: true # 开启懒加载，保证启动速度
-          url: jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&nullCatalogMeansCurrent=true
-          username: root
-          password: 123456
-#        tdengine: # IoT 数据库（需要 IoT 物联网再开启噢！）
+        #slave: # 模拟从库，可根据自己需要修改
+        #  lazy: true # 开启懒加载，保证启动速度
+        #  url: jdbc:mysql://127.0.0.1:3306/ruoyi-vue-pro?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&nullCatalogMeansCurrent=true
+        #  username: root
+         #   password: 123456
+          # ✅ 添加Oracle数据源
+        oracle:
+          #lazy: true # 建议开启懒加载
+          #url: jdbc:oracle:thin:@127.0.0.1:1521:orcl1?useUnicode=true&characterEncoding=UTF-8
+          url: jdbc:oracle:thin:@10.47.0.170:1521:ORCL?useUnicode=true&characterEncoding=UTF-8
+          username: ruoyi
+          password: Ruoyi123456
+          #username: system
+          #password: admin
+          driver-class-name: oracle.jdbc.OracleDriver
+          druid:
+                     validation-query: 'SELECT 1 from DUAL' # TDengine 数据源的有效性检查 SQL
+
+  #        tdengine: # IoT 数据库（需要 IoT 物联网再开启噢！）
 #          url: jdbc:TAOS-RS://127.0.0.1:6041/ruoyi_vue_pro
 #          driver-class-name: com.taosdata.jdbc.rs.RestfulDriver
 #          username: root
@@ -187,6 +202,9 @@ logging:
     cn.iocoder.yudao.module.iot.dal.tdengine: DEBUG
     cn.iocoder.yudao.module.ai.dal.mysql: debug
     org.springframework.context.support.PostProcessorRegistrationDelegate: ERROR # TODO 芋艿：先禁用，Spring Boot 3.X 存在部分错误的 WARN 提示
+    com.baomidou.mybatisplus: DEBUG
+    org.apache.ibatis: DEBUG
+    java.sql: DEBUG
 
 debug: false
 
@@ -233,6 +251,8 @@ yudao:
   access-log: # 访问日志的配置项
     enable: false
   demo: false # 关闭演示模式
+  encrypt:
+    enabled: false
   wxa-code:
     env-version: develop # 小程序版本: 正式版为 "release"；体验版为 "trial"；开发版为 "develop"
   wxa-subscribe-message:

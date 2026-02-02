@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="cn.iocoder.yudao.module.wm.dal.mysql.materialkittingtool.MaterialKittingToolMapper">
+<mapper namespace="cn.iocoder.yudao.module.wm.dal.mysql.kittingmaster.KittingMasterMapper">
 
     <!-- 齐套分析结果映射 -->
-    <resultMap id="MaterialKittingToolResultMap" type="cn.iocoder.yudao.module.wm.dal.dataobject.materialkittingtool.MaterialKittingToolDO">
+    <resultMap id="KittingMasterResultMap" type="cn.iocoder.yudao.module.wm.dal.dataobject.kittingmaster.KittingMasterDO">
         <!-- 基础字段 -->
         <result property="productionOrderNo" column="PRODUCTION_ORDER_NO"/>
         <result property="assemblyMaterialNo" column="ASSEMBLY_MATERIAL_NO"/>
@@ -12,20 +12,11 @@
         <result property="kittingStatus" column="KITTING_STATUS"/>
         <result property="productionWorkshop" column="PRODUCTION_WORKSHOP"/>
         <result property="scheduledQuantity" column="SCHEDULED_QUANTITY"/>
-        <result property="componentMaterialNo" column="COMPONENT_MATERIAL_NO"/>
-        <result property="componentDesc" column="COMPONENT_DESC"/>
-        <result property="unitUsage" column="UNIT_USAGE"/>
-        <result property="requiredQty" column="REQUIRED_QTY"/>
-        <result property="stockTomorrow" column="STOCK_TOMORROW"/>
-        <result property="stockDayAfterTomorrow" column="STOCK_DAY_AFTER_TOMORROW"/>
-        <result property="stockThirdDay" column="STOCK_THIRD_DAY"/>
-        <result property="stockQuantity" column="STOCK_QUANTITY"/>
-        <result property="shortageQty" column="SHORTAGE_QTY"/>
         <result property="assemblyKittingStatus" column="ASSEMBLY_KITTING_STATUS"/>
     </resultMap>
 
     <!-- 查询齐套分析 -->
-    <select id="selectMaterialKittingTool" resultMap="MaterialKittingToolResultMap">
+    <select id="selectKittingMaster" resultMap="KittingMasterResultMap">
         SELECT
 
         PRODUCTION_ORDER_NO as PRODUCTION_ORDER_NO,
@@ -246,51 +237,87 @@
 
     <!-- 根据参数查询齐套分析数据 -->
     <!-- 根据参数查询齐套分析数据 -->
-    <select id="selectMaterialKittingToolByParams" resultMap="MaterialKittingToolResultMap">
+    <select id="selectKittingMasterByParams" resultMap="KittingMasterResultMap">
+        -- ==============================================
+        -- 功能：未来3天生产订单【订单级汇总查询】物料齐套性
+        -- 核心业务规则：①当日订单仅抢占当日库存，跨日期无抢占 ②订单号小优先占用库存，同单号按主料号排序 ③后天库存计算需扣减未结出库量 ④木桶效应判定整单齐套性
+        -- ==============================================
+        WITH
+        -- 基础数据：物料BOM清单，按主料+组件维度汇总单台用量
+        COMMON_BOM AS (
         SELECT
-        f.*,
-        CASE
-        WHEN a.min_completable_sets &gt; 0 THEN '齐套' || a.min_completable_sets || '套'
-        ELSE '不齐套'
-        END as ASSEMBLY_KITTING_STATUS
-        FROM (
-        SELECT * FROM (
+        MAIN_MATERIAL_NO,
+        COMPONENT_MATERIAL_NO,
+        COMPONENT_DESC,
+        SUM(UNIT_USAGE) AS UNIT_USAGE
+        FROM RUOYI.MATERIAL_BOM_IMPORT
+        WHERE DELETED = 0 AND LEVEL_NO = 1
+        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
+        ),
+        -- 基础数据：物料实时库存，按物料号汇总可用库存总量
+        COMMON_STOCK AS (
         SELECT
-        PRODUCTION_ORDER_NO as PRODUCTION_ORDER_NO,
-        ASSEMBLY_MATERIAL_NO as ASSEMBLY_MATERIAL_NO,
-        MAIN_MATERIAL_DESC as MAIN_MATERIAL_DESC,
-        SCHEDULED_DATE as SCHEDULED_DATE,
-
-        CASE
-        WHEN (stock_tomorrow + stock_day_after_tomorrow + stock_third_day) &gt;= required_qty THEN '齐套'
-        WHEN (stock_tomorrow + stock_day_after_tomorrow + stock_third_day) &gt; 0 THEN
-        '齐套' || FLOOR((stock_tomorrow + stock_day_after_tomorrow + stock_third_day) / UNIT_USAGE) || '套'
-        ELSE '不齐套'
-        END as KITTING_STATUS,
-
-        PRODUCTION_WORKSHOP as PRODUCTION_WORKSHOP,
-        SCHEDULED_QUANTITY as SCHEDULED_QUANTITY,
-        COMPONENT_MATERIAL_NO as COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC as COMPONENT_DESC,
-        UNIT_USAGE as UNIT_USAGE,
-        required_qty as REQUIRED_QTY,
-
-        stock_tomorrow as STOCK_TOMORROW,
-        stock_day_after_tomorrow as STOCK_DAY_AFTER_TOMORROW,
-        stock_third_day as STOCK_THIRD_DAY,
-
-        (stock_tomorrow + stock_day_after_tomorrow + stock_third_day) as STOCK_QUANTITY,
-
-        GREATEST(0, required_qty - (stock_tomorrow + stock_day_after_tomorrow + stock_third_day)) as SHORTAGE_QTY,
-
-        CASE
-        WHEN (stock_tomorrow + stock_day_after_tomorrow + stock_third_day) &gt;= required_qty THEN SCHEDULED_QUANTITY
-        WHEN (stock_tomorrow + stock_day_after_tomorrow + stock_third_day) &gt; 0 THEN
-        FLOOR((stock_tomorrow + stock_day_after_tomorrow + stock_third_day) / UNIT_USAGE)
-        ELSE 0
-        END as COMPLETABLE_SETS
-
-        FROM (
+        MATERIAL_NO,
+        SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
+        FROM RUOYI.REAL_TIME_STOCK
+        WHERE DELETED = 0 OR DELETED IS NULL
+        GROUP BY MATERIAL_NO
+        ),
+        -- 基础数据：订单未结出库量，按订单+物料维度汇总待出库数量
+        COMMON_TRACE AS (
+        SELECT
+        ORDER_NO,
+        MATERIAL_NO,
+        SUM(OUTBOUND_ACCUMULATED) AS OPEN_QUANTITY
+        FROM RUOYI.TRACE_ORDER_DEMAND
+        WHERE DELETED = 0
+        GROUP BY ORDER_NO, MATERIAL_NO
+        ),
+        -- 基础数据：工单已出库量，按订单+物料维度汇总已领用数量
+        COMMON_TASK AS (
+        SELECT
+        order_no,
+        material_no,
+        SUM(quantity) AS outbound_qty
+        FROM RUOYI.WM_DISTRIBUTION_TASK
+        WHERE deleted = 0
+        GROUP BY order_no, material_no
+        ),
+        -- 库存占用量汇总 - 订单优先级递进扣减逻辑
+        STOCK_OCCUPY_SUM AS (
+        SELECT
+        mp2.PRODUCTION_ORDER_NO,
+        mp2.ASSEMBLY_MATERIAL_NO,
+        bom2.COMPONENT_MATERIAL_NO,
+        mp2.SCHEDULED_DATE,
+        SUM(
+        LEAST(
+        CASE WHEN mp2.SCHEDULED_DATE = TRUNC(SYSDATE)+2 THEN
+        mp2.SCHEDULED_QUANTITY * bom2.UNIT_USAGE - COALESCE(TRACE2.OPEN_QUANTITY,0)
+        ELSE
+        mp2.SCHEDULED_QUANTITY * bom2.UNIT_USAGE
+        END,
+        GREATEST(0, COALESCE(stock2.AVAILABLE_QUANTITY,0) - COALESCE(TRACE2.OPEN_QUANTITY,0))
+        )
+        ) AS OCCUPY_SUM
+        FROM RUOYI.APS_MAIN_PLAN mp2
+        JOIN COMMON_BOM bom2 ON mp2.ASSEMBLY_MATERIAL_NO = bom2.MAIN_MATERIAL_NO
+        LEFT JOIN COMMON_STOCK stock2 ON bom2.COMPONENT_MATERIAL_NO = stock2.MATERIAL_NO
+        LEFT JOIN COMMON_TRACE TRACE2 ON mp2.PRODUCTION_ORDER_NO = TRACE2.ORDER_NO AND bom2.COMPONENT_MATERIAL_NO = TRACE2.MATERIAL_NO
+        WHERE mp2.DELETED =0
+        AND mp2.SCHEDULED_DATE BETWEEN TRUNC(SYSDATE)+1 AND TRUNC(SYSDATE)+3
+        AND EXISTS (
+        SELECT 1 FROM RUOYI.APS_MAIN_PLAN mp3
+        WHERE mp3.DELETED=0
+        AND mp3.SCHEDULED_DATE = mp2.SCHEDULED_DATE
+        AND mp3.ASSEMBLY_MATERIAL_NO = mp2.ASSEMBLY_MATERIAL_NO
+        AND (mp3.PRODUCTION_ORDER_NO &lt; mp2.PRODUCTION_ORDER_NO
+        OR (mp3.PRODUCTION_ORDER_NO = mp2.PRODUCTION_ORDER_NO AND mp3.ASSEMBLY_MATERIAL_NO &lt; mp2.ASSEMBLY_MATERIAL_NO))
+        )
+        GROUP BY mp2.PRODUCTION_ORDER_NO, mp2.ASSEMBLY_MATERIAL_NO, bom2.COMPONENT_MATERIAL_NO, mp2.SCHEDULED_DATE
+        ),
+        -- 主数据整合：订单+物料+库存+占用量 全维度基础数据
+        BASE_PROD_DATA AS (
         SELECT
         mp.PRODUCTION_ORDER_NO,
         mp.ASSEMBLY_MATERIAL_NO,
@@ -301,408 +328,115 @@
         bom.COMPONENT_MATERIAL_NO,
         bom.COMPONENT_DESC,
         bom.UNIT_USAGE,
-        (mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE) as required_qty,
-        COALESCE(stock.AVAILABLE_QUANTITY, 0) as total_available_stock,
-
-        CASE
-        WHEN mp.SCHEDULED_DATE = TRUNC(SYSDATE) + 1 THEN
-        LEAST(
-        (mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE),
-        GREATEST(0, COALESCE(stock.AVAILABLE_QUANTITY, 0) -
-        COALESCE((
-        SELECT SUM(mp2.SCHEDULED_QUANTITY * bom2.UNIT_USAGE)
-        FROM APS_MAIN_PLAN mp2
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom2 ON mp2.ASSEMBLY_MATERIAL_NO = bom2.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock2 ON bom2.COMPONENT_MATERIAL_NO = stock2.MATERIAL_NO
-        WHERE mp2.DELETED = 0
-        AND bom2.COMPONENT_MATERIAL_NO = bom.COMPONENT_MATERIAL_NO
-        AND mp2.SCHEDULED_DATE = TRUNC(SYSDATE) + 1
-        AND (mp2.PRODUCTION_ORDER_NO &lt; mp.PRODUCTION_ORDER_NO
-        OR (mp2.PRODUCTION_ORDER_NO = mp.PRODUCTION_ORDER_NO
-        AND mp2.ASSEMBLY_MATERIAL_NO &lt; mp.ASSEMBLY_MATERIAL_NO))
-        ), 0)
-        )
-        )
-        ELSE 0
-        END as stock_tomorrow,
-
-        CASE
-        WHEN mp.SCHEDULED_DATE = TRUNC(SYSDATE) + 2 THEN
-        LEAST(
-        (mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE),
-        GREATEST(0, COALESCE(stock.AVAILABLE_QUANTITY, 0) -
-        COALESCE((
-        SELECT SUM(mp3.SCHEDULED_QUANTITY * bom3.UNIT_USAGE)
-        FROM APS_MAIN_PLAN mp3
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom3 ON mp3.ASSEMBLY_MATERIAL_NO = bom3.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock3 ON bom3.COMPONENT_MATERIAL_NO = stock3.MATERIAL_NO
-        WHERE mp3.DELETED = 0
-        AND bom3.COMPONENT_MATERIAL_NO = bom.COMPONENT_MATERIAL_NO
-        AND mp3.SCHEDULED_DATE = TRUNC(SYSDATE) + 1
-        ), 0) -
-        COALESCE((
-        SELECT SUM(mp2.SCHEDULED_QUANTITY * bom2.UNIT_USAGE)
-        FROM APS_MAIN_PLAN mp2
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom2 ON mp2.ASSEMBLY_MATERIAL_NO = bom2.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock2 ON bom2.COMPONENT_MATERIAL_NO = stock2.MATERIAL_NO
-        WHERE mp2.DELETED = 0
-        AND bom2.COMPONENT_MATERIAL_NO = bom.COMPONENT_MATERIAL_NO
-        AND mp2.SCHEDULED_DATE = TRUNC(SYSDATE) + 2
-        AND (mp2.PRODUCTION_ORDER_NO &lt; mp.PRODUCTION_ORDER_NO
-        OR (mp2.PRODUCTION_ORDER_NO = mp.PRODUCTION_ORDER_NO
-        AND mp2.ASSEMBLY_MATERIAL_NO &lt; mp.ASSEMBLY_MATERIAL_NO))
-        ), 0)
-        )
-        )
-        ELSE 0
-        END as stock_day_after_tomorrow,
-
-        CASE
-        WHEN mp.SCHEDULED_DATE = TRUNC(SYSDATE) + 3 THEN
-        LEAST(
-        (mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE),
-        GREATEST(0, COALESCE(stock.AVAILABLE_QUANTITY, 0) -
-        COALESCE((
-        SELECT SUM(mp3.SCHEDULED_QUANTITY * bom3.UNIT_USAGE)
-        FROM APS_MAIN_PLAN mp3
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom3 ON mp3.ASSEMBLY_MATERIAL_NO = bom3.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock3 ON bom3.COMPONENT_MATERIAL_NO = stock3.MATERIAL_NO
-        WHERE mp3.DELETED = 0
-        AND bom3.COMPONENT_MATERIAL_NO = bom.COMPONENT_MATERIAL_NO
-        AND mp3.SCHEDULED_DATE IN (TRUNC(SYSDATE) + 1, TRUNC(SYSDATE) + 2)
-        ), 0) -
-        COALESCE((
-        SELECT SUM(mp2.SCHEDULED_QUANTITY * bom2.UNIT_USAGE)
-        FROM APS_MAIN_PLAN mp2
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom2 ON mp2.ASSEMBLY_MATERIAL_NO = bom2.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock2 ON bom2.COMPONENT_MATERIAL_NO = stock2.MATERIAL_NO
-        WHERE mp2.DELETED = 0
-        AND bom2.COMPONENT_MATERIAL_NO = bom.COMPONENT_MATERIAL_NO
-        AND mp2.SCHEDULED_DATE = TRUNC(SYSDATE) + 3
-        AND (mp2.PRODUCTION_ORDER_NO &lt; mp.PRODUCTION_ORDER_NO
-        OR (mp2.PRODUCTION_ORDER_NO = mp.PRODUCTION_ORDER_NO
-        AND mp2.ASSEMBLY_MATERIAL_NO &lt; mp.ASSEMBLY_MATERIAL_NO))
-        ), 0)
-        )
-        )
-        ELSE 0
-        END as stock_third_day
-
-        FROM APS_MAIN_PLAN mp
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom ON mp.ASSEMBLY_MATERIAL_NO = bom.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock ON bom.COMPONENT_MATERIAL_NO = stock.MATERIAL_NO
+        NVL(mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE, 0) AS REQUIRED_QTY,
+        NVL(stock.AVAILABLE_QUANTITY, 0) AS TOTAL_AVAILABLE_STOCK,
+        NVL(TRACE.OPEN_QUANTITY, 0) AS OPEN_QUANTITY,
+        NVL(task.outbound_qty, 0) AS outbound_qty,
+        CASE WHEN mp.SCHEDULED_DATE = TRUNC(SYSDATE) + 1 THEN
+        LEAST(mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE, GREATEST(0, COALESCE(stock.AVAILABLE_QUANTITY,0) - NVL(s.OCCUPY_SUM, 0)))
+        ELSE 0 END AS STOCK_TOMORROW,
+        CASE WHEN mp.SCHEDULED_DATE = TRUNC(SYSDATE) + 2 THEN
+        LEAST((mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE) - COALESCE(TRACE.OPEN_QUANTITY,0), GREATEST(0, COALESCE(stock.AVAILABLE_QUANTITY,0) - NVL(s.OCCUPY_SUM, 0)))
+        ELSE 0 END AS STOCK_DAY_AFTER_TOMORROW,
+        CASE WHEN mp.SCHEDULED_DATE = TRUNC(SYSDATE) + 3 THEN
+        LEAST(mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE, GREATEST(0, COALESCE(stock.AVAILABLE_QUANTITY,0) - NVL(s.OCCUPY_SUM, 0)))
+        ELSE 0 END AS STOCK_THIRD_DAY
+        FROM RUOYI.APS_MAIN_PLAN mp
+        JOIN COMMON_BOM bom ON mp.ASSEMBLY_MATERIAL_NO = bom.MAIN_MATERIAL_NO
+        LEFT JOIN COMMON_STOCK stock ON bom.COMPONENT_MATERIAL_NO = stock.MATERIAL_NO
+        LEFT JOIN COMMON_TRACE TRACE ON mp.PRODUCTION_ORDER_NO = TRACE.ORDER_NO AND bom.COMPONENT_MATERIAL_NO = TRACE.MATERIAL_NO
+        LEFT JOIN COMMON_TASK task ON mp.PRODUCTION_ORDER_NO = task.order_no AND bom.COMPONENT_MATERIAL_NO = task.material_no
+        LEFT JOIN STOCK_OCCUPY_SUM s ON mp.PRODUCTION_ORDER_NO = s.PRODUCTION_ORDER_NO
+        AND mp.ASSEMBLY_MATERIAL_NO = s.ASSEMBLY_MATERIAL_NO
+        AND bom.COMPONENT_MATERIAL_NO = s.COMPONENT_MATERIAL_NO
+        AND mp.SCHEDULED_DATE = s.SCHEDULED_DATE
         WHERE mp.DELETED = 0
         AND mp.SCHEDULED_DATE BETWEEN TRUNC(SYSDATE) + 1 AND TRUNC(SYSDATE) + 3
+        ),
+        -- 组件级核心计算：计算每个组件的可配套数
+        COMPONENT_CORE_CALC AS (
+        SELECT
+        PRODUCTION_ORDER_NO,
+        ASSEMBLY_MATERIAL_NO,
+        MAIN_MATERIAL_DESC,
+        SCHEDULED_DATE,
+        PRODUCTION_WORKSHOP,
+        SCHEDULED_QUANTITY,
+        NVL(UNIT_USAGE,0) AS UNIT_USAGE,
+        NVL(REQUIRED_QTY,0) AS REQUIRED_QTY,
+        (STOCK_TOMORROW + STOCK_DAY_AFTER_TOMORROW + STOCK_THIRD_DAY) AS STOCK_QUANTITY,
+        OPEN_QUANTITY,
+        -- 直接计算可配套数
+        CASE
+        WHEN ((STOCK_TOMORROW + STOCK_DAY_AFTER_TOMORROW + STOCK_THIRD_DAY) + OPEN_QUANTITY) &gt;= REQUIRED_QTY THEN SCHEDULED_QUANTITY
+        WHEN ((STOCK_TOMORROW + STOCK_DAY_AFTER_TOMORROW + STOCK_THIRD_DAY) + OPEN_QUANTITY) &gt; 0 THEN FLOOR(((STOCK_TOMORROW + STOCK_DAY_AFTER_TOMORROW + STOCK_THIRD_DAY) + OPEN_QUANTITY) / UNIT_USAGE)
+        ELSE 0
+        END AS COMPLETABLE_SETS
+        FROM BASE_PROD_DATA
+        ),
+        -- 核心逻辑【木桶效应】：订单级齐套性判定
+        MIN_COMPLETABLE_SETS AS (
+        SELECT
+        PRODUCTION_ORDER_NO,
+        ASSEMBLY_MATERIAL_NO,
+        MAIN_MATERIAL_DESC,
+        SCHEDULED_DATE,
+        PRODUCTION_WORKSHOP,
+        SCHEDULED_QUANTITY,
+        MIN(COMPLETABLE_SETS) AS min_completable_sets
+        FROM COMPONENT_CORE_CALC
+        GROUP BY PRODUCTION_ORDER_NO, ASSEMBLY_MATERIAL_NO, MAIN_MATERIAL_DESC, SCHEDULED_DATE, PRODUCTION_WORKSHOP, SCHEDULED_QUANTITY
         )
-        ) t
+        -- 最终订单级汇总查询
+        SELECT
+        PRODUCTION_ORDER_NO,          -- 1. 生产订单号
+        ASSEMBLY_MATERIAL_NO,         -- 2. 总成物料号
+        MAIN_MATERIAL_DESC,           -- 3. 主物料描述
+        SCHEDULED_DATE,               -- 4. 排产时间
+        -- 组件级KITTING_STATUS
+        CASE
+        WHEN min_completable_sets &gt;= SCHEDULED_QUANTITY THEN '齐套'
+        WHEN min_completable_sets &gt; 0 THEN '齐套' || min_completable_sets || '套'
+        ELSE '不齐套'
+        END AS KITTING_STATUS,        -- 5. 组件是否齐套
+        PRODUCTION_WORKSHOP,          -- 6. 生产车间
+        SCHEDULED_QUANTITY,           -- 7. 排产数量
+        CASE
+        WHEN min_completable_sets &gt;= SCHEDULED_QUANTITY THEN '齐套'
+        WHEN min_completable_sets &gt; 0 THEN '齐套' || min_completable_sets || '套'
+        ELSE '不齐套'
+        END AS ASSEMBLY_KITTING_STATUS -- 8. 订单是否齐套
+        FROM MIN_COMPLETABLE_SETS
         WHERE 1=1
+        -- 条件1：按生产订单号精确筛选
         <if test="params.productionOrderNo != null and params.productionOrderNo != ''">
             AND PRODUCTION_ORDER_NO = #{params.productionOrderNo}
         </if>
+        -- 条件2：按装配物料号精确筛选
         <if test="params.assemblyMaterialNo != null and params.assemblyMaterialNo != ''">
             AND ASSEMBLY_MATERIAL_NO = #{params.assemblyMaterialNo}
         </if>
+        -- 条件3：按组件物料号精确筛选
         <if test="params.componentMaterialNo != null and params.componentMaterialNo != ''">
             AND COMPONENT_MATERIAL_NO = #{params.componentMaterialNo}
         </if>
+        -- 条件4：按主物料描述模糊筛选
         <if test="params.mainMaterialDesc != null and params.mainMaterialDesc != ''">
             AND MAIN_MATERIAL_DESC LIKE '%' || #{params.mainMaterialDesc} || '%'
         </if>
+        -- 条件5：按生产车间精确筛选
         <if test="params.productionWorkshop != null and params.productionWorkshop != ''">
             AND PRODUCTION_WORKSHOP = #{params.productionWorkshop}
         </if>
+        -- 条件6：按计划日期范围筛选（传入2个日期时）
         <if test="params.scheduledDate != null and params.scheduledDate.length == 2">
             AND SCHEDULED_DATE BETWEEN #{params.scheduledDate[0]} AND #{params.scheduledDate[1]}
         </if>
+        -- 条件7：按计划日期精确筛选（传入1个日期时）
         <if test="params.scheduledDate != null and params.scheduledDate.length == 1">
             AND SCHEDULED_DATE = #{params.scheduledDate[0]}
         </if>
-        ) f
-        LEFT JOIN (
-        SELECT
-        PRODUCTION_ORDER_NO,
-        ASSEMBLY_MATERIAL_NO,
-        SCHEDULED_DATE,
-        MIN(completable_sets) as min_completable_sets
-        FROM (
-        SELECT
-        PRODUCTION_ORDER_NO,
-        ASSEMBLY_MATERIAL_NO,
-        SCHEDULED_DATE,
-        CASE
-        WHEN (stock_tomorrow + stock_day_after_tomorrow + stock_third_day) &gt;= required_qty THEN SCHEDULED_QUANTITY
-        WHEN (stock_tomorrow + stock_day_after_tomorrow + stock_third_day) &gt; 0 THEN
-        FLOOR((stock_tomorrow + stock_day_after_tomorrow + stock_third_day) / UNIT_USAGE)
-        ELSE 0
-        END as completable_sets
-        FROM (
-        SELECT
-        mp.PRODUCTION_ORDER_NO,
-        mp.ASSEMBLY_MATERIAL_NO,
-        mp.SCHEDULED_DATE,
-        mp.SCHEDULED_QUANTITY,
-        bom.UNIT_USAGE,
-        (mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE) as required_qty,
-        CASE
-        WHEN mp.SCHEDULED_DATE = TRUNC(SYSDATE) + 1 THEN
-        LEAST(
-        (mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE),
-        GREATEST(0, COALESCE(stock.AVAILABLE_QUANTITY, 0) -
-        COALESCE((
-        SELECT SUM(mp2.SCHEDULED_QUANTITY * bom2.UNIT_USAGE)
-        FROM APS_MAIN_PLAN mp2
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom2 ON mp2.ASSEMBLY_MATERIAL_NO = bom2.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock2 ON bom2.COMPONENT_MATERIAL_NO = stock2.MATERIAL_NO
-        WHERE mp2.DELETED = 0
-        AND bom2.COMPONENT_MATERIAL_NO = bom.COMPONENT_MATERIAL_NO
-        AND mp2.SCHEDULED_DATE = TRUNC(SYSDATE) + 1
-        AND (mp2.PRODUCTION_ORDER_NO &lt; mp.PRODUCTION_ORDER_NO
-        OR (mp2.PRODUCTION_ORDER_NO = mp.PRODUCTION_ORDER_NO
-        AND mp2.ASSEMBLY_MATERIAL_NO &lt; mp.ASSEMBLY_MATERIAL_NO))
-        ), 0)
-        )
-        )
-        ELSE 0
-        END as stock_tomorrow,
-        CASE
-        WHEN mp.SCHEDULED_DATE = TRUNC(SYSDATE) + 2 THEN
-        LEAST(
-        (mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE),
-        GREATEST(0, COALESCE(stock.AVAILABLE_QUANTITY, 0) -
-        COALESCE((
-        SELECT SUM(mp3.SCHEDULED_QUANTITY * bom3.UNIT_USAGE)
-        FROM APS_MAIN_PLAN mp3
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom3 ON mp3.ASSEMBLY_MATERIAL_NO = bom3.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock3 ON bom3.COMPONENT_MATERIAL_NO = stock3.MATERIAL_NO
-        WHERE mp3.DELETED = 0
-        AND bom3.COMPONENT_MATERIAL_NO = bom.COMPONENT_MATERIAL_NO
-        AND mp3.SCHEDULED_DATE = TRUNC(SYSDATE) + 1
-        ), 0) -
-        COALESCE((
-        SELECT SUM(mp2.SCHEDULED_QUANTITY * bom2.UNIT_USAGE)
-        FROM APS_MAIN_PLAN mp2
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom2 ON mp2.ASSEMBLY_MATERIAL_NO = bom2.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock2 ON bom2.COMPONENT_MATERIAL_NO = stock2.MATERIAL_NO
-        WHERE mp2.DELETED = 0
-        AND bom2.COMPONENT_MATERIAL_NO = bom.COMPONENT_MATERIAL_NO
-        AND mp2.SCHEDULED_DATE = TRUNC(SYSDATE) + 2
-        AND (mp2.PRODUCTION_ORDER_NO &lt; mp.PRODUCTION_ORDER_NO
-        OR (mp2.PRODUCTION_ORDER_NO = mp.PRODUCTION_ORDER_NO
-        AND mp2.ASSEMBLY_MATERIAL_NO &lt; mp.ASSEMBLY_MATERIAL_NO))
-        ), 0)
-        )
-        )
-        ELSE 0
-        END as stock_day_after_tomorrow,
-        CASE
-        WHEN mp.SCHEDULED_DATE = TRUNC(SYSDATE) + 3 THEN
-        LEAST(
-        (mp.SCHEDULED_QUANTITY * bom.UNIT_USAGE),
-        GREATEST(0, COALESCE(stock.AVAILABLE_QUANTITY, 0) -
-        COALESCE((
-        SELECT SUM(mp3.SCHEDULED_QUANTITY * bom3.UNIT_USAGE)
-        FROM APS_MAIN_PLAN mp3
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom3 ON mp3.ASSEMBLY_MATERIAL_NO = bom3.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock3 ON bom3.COMPONENT_MATERIAL_NO = stock3.MATERIAL_NO
-        WHERE mp3.DELETED = 0
-        AND bom3.COMPONENT_MATERIAL_NO = bom.COMPONENT_MATERIAL_NO
-        AND mp3.SCHEDULED_DATE IN (TRUNC(SYSDATE) + 1, TRUNC(SYSDATE) + 2)
-        ), 0) -
-        COALESCE((
-        SELECT SUM(mp2.SCHEDULED_QUANTITY * bom2.UNIT_USAGE)
-        FROM APS_MAIN_PLAN mp2
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom2 ON mp2.ASSEMBLY_MATERIAL_NO = bom2.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock2 ON bom2.COMPONENT_MATERIAL_NO = stock2.MATERIAL_NO
-        WHERE mp2.DELETED = 0
-        AND bom2.COMPONENT_MATERIAL_NO = bom.COMPONENT_MATERIAL_NO
-        AND mp2.SCHEDULED_DATE = TRUNC(SYSDATE) + 3
-        AND (mp2.PRODUCTION_ORDER_NO &lt; mp.PRODUCTION_ORDER_NO
-        OR (mp2.PRODUCTION_ORDER_NO = mp.PRODUCTION_ORDER_NO
-        AND mp2.ASSEMBLY_MATERIAL_NO &lt; mp.ASSEMBLY_MATERIAL_NO))
-        ), 0)
-        )
-        )
-        ELSE 0
-        END as stock_third_day
-        FROM APS_MAIN_PLAN mp
-        JOIN (
-        SELECT
-        MAIN_MATERIAL_NO,
-        COMPONENT_MATERIAL_NO,
-        COMPONENT_DESC,
-        SUM(UNIT_USAGE) as UNIT_USAGE
-        FROM MATERIAL_BOM_IMPORT
-        WHERE DELETED = 0
-        AND LEVEL_NO = 1
-        AND PROCUREMENT_TYPE = 'F'
-        GROUP BY MAIN_MATERIAL_NO, COMPONENT_MATERIAL_NO, COMPONENT_DESC
-        ) bom ON mp.ASSEMBLY_MATERIAL_NO = bom.MAIN_MATERIAL_NO
-        LEFT JOIN (SELECT MATERIAL_NO, SUM(AVAILABLE_QUANTITY) AS AVAILABLE_QUANTITY
-        FROM REAL_TIME_STOCK
-        WHERE DELETED = 0 OR DELETED IS NULL
-        GROUP BY MATERIAL_NO) stock ON bom.COMPONENT_MATERIAL_NO = stock.MATERIAL_NO
-        WHERE mp.DELETED = 0
-        AND mp.SCHEDULED_DATE BETWEEN TRUNC(SYSDATE) + 1 AND TRUNC(SYSDATE) + 3
-        )
-        )
-        GROUP BY PRODUCTION_ORDER_NO, ASSEMBLY_MATERIAL_NO, SCHEDULED_DATE
-        ) a ON f.PRODUCTION_ORDER_NO = a.PRODUCTION_ORDER_NO
-        AND f.ASSEMBLY_MATERIAL_NO = a.ASSEMBLY_MATERIAL_NO
-        AND f.SCHEDULED_DATE = a.SCHEDULED_DATE
-        ORDER BY f.SCHEDULED_DATE, f.PRODUCTION_ORDER_NO, f.COMPONENT_MATERIAL_NO
+        -- 排序规则：优先级（齐套→齐套X件→不齐套），再按排产日期、订单号排序
+        ORDER BY min_completable_sets desc, SCHEDULED_DATE, PRODUCTION_ORDER_NO
     </select>
 </mapper>

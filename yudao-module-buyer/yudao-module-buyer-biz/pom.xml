@@ -4,16 +4,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>cn.iocoder.boot</groupId>
-        <artifactId>yudao-module-aps</artifactId>
+        <artifactId>yudao-module-buyer</artifactId>
         <version>${revision}</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>yudao-module-aps-biz</artifactId>
+    <artifactId>yudao-module-buyer-biz</artifactId>
     <packaging>jar</packaging>
 
     <name>${project.artifactId}</name>
     <description>
-        APS 模块，主要实现 工序计划 等功能。
+        buyer 模块，主要实现 采购等功能。
     </description>
 
     <dependencies>
@@ -24,7 +24,7 @@
         </dependency>
         <dependency>
             <groupId>cn.iocoder.boot</groupId>
-            <artifactId>yudao-module-aps-api</artifactId>
+            <artifactId>yudao-module-buyer-api</artifactId>
             <version>${revision}</version>
         </dependency>
 
