@@ -15,16 +15,46 @@
     <description>
         wm 模块，主要实现 采购等功能。
     </description>
-
+    <profiles>
+        <profile>
+            <id>windows</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <sapjco.path>C:/files/IdeaProjects/ruoyi-vue-pro/lib/sapjco3.jar</sapjco.path>
+            </properties>
+        </profile>
+        <profile>
+            <id>linux</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                </os>
+            </activation>
+            <properties>
+                <sapjco.path>/www/wwwroot/yudao-server/sapjco3.jar</sapjco.path>
+            </properties>
+        </profile>
+    </profiles>
     <dependencies>
         <dependency>
             <groupId>cn.iocoder.boot</groupId>
             <artifactId>yudao-module-system-api</artifactId>
             <version>${revision}</version>
         </dependency>
+<!--        <dependency>-->
+<!--            <groupId>cn.iocoder.boot</groupId>-->
+<!--            <artifactId>yudao-module-wm-api</artifactId>-->
+<!--            <version>${revision}</version>-->
+<!--        </dependency>-->
+
         <dependency>
             <groupId>cn.iocoder.boot</groupId>
-            <artifactId>yudao-module-wm-api</artifactId>
+            <artifactId>yudao-module-aps-biz</artifactId>
             <version>${revision}</version>
         </dependency>
 
@@ -60,12 +90,7 @@
             <artifactId>yudao-spring-boot-starter-redis</artifactId>
         </dependency>
 
-        <!-- oracle驱动 -->
-        <dependency>
-            <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ojdbc8</artifactId>
-            <version>21.5.0.0</version>
-        </dependency>
+
         <!-- Config 配置中心相关 -->
 
         <!-- Job 定时任务相关 -->
@@ -144,10 +169,10 @@
         <dependency>
             <groupId>com.sap</groupId>
             <artifactId>sapjco3</artifactId>
-            <version>3.0.19</version>
+            <version>3.1.0</version>
             <scope>system</scope>
             <!-- 必须使用绝对路径 -->
-            <systemPath>C:/files/IdeaProjects/ruoyi-vue-pro/lib/sapjco3.jar</systemPath>
+            <systemPath>${sapjco.path}</systemPath>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -169,6 +194,23 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>31.1-jre</version>
+        </dependency>
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-module-buyer-biz</artifactId>
+            <version>2.4.2-jdk8-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>cn.iocoder.boot</groupId>
+            <artifactId>yudao-module-buyer-biz</artifactId>
+            <version>2.4.2-jdk8-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 

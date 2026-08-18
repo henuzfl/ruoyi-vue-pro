@@ -13,10 +13,6 @@ import com.alibaba.excel.annotation.*;
 @ExcelIgnoreUnannotated
 public class MaterialKittingToolRespVO {
 
-    @Schema(description = "主键ID", requiredMode = Schema.RequiredMode.REQUIRED, example = "9944")
-    @ExcelProperty("主键ID")
-    private BigDecimal id;
-
     @Schema(description = "生产订单号", requiredMode = Schema.RequiredMode.REQUIRED)
     @ExcelProperty("生产订单号")
     private String productionOrderNo;
@@ -36,10 +32,6 @@ public class MaterialKittingToolRespVO {
     @Schema(description = "生产车间")
     @ExcelProperty("生产车间")
     private String productionWorkshop;
-
-    @Schema(description = "创建时间")
-    @ExcelProperty("创建时间")
-    private LocalDateTime createTime;
 
     // 新增字段
     @Schema(description = "排产时间")
@@ -97,5 +89,9 @@ public class MaterialKittingToolRespVO {
     @Schema(description = "差额")
     @ExcelProperty("差额")
     private BigDecimal shortageQty;
+
+    @Schema(description = "是否全部出库")
+    @ExcelProperty("是否全部出库")
+    private String openFlag;
 
 }

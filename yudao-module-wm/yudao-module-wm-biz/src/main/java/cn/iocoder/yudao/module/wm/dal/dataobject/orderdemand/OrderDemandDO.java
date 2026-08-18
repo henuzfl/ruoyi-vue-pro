@@ -30,7 +30,7 @@ public class OrderDemandDO extends BaseDO {
     /**
      * 编号
      */
-    @TableId
+    @TableId(type = IdType.ASSIGN_ID)
     private BigDecimal id;
     /**
      * 订单号

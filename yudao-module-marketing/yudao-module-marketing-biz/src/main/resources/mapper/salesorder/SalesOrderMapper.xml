@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.marketing.dal.mysql.salesorder.SalesOrderMapper">
+
+    <!-- 批量插入（Oracle 使用 INSERT ALL） -->
+    <insert id="insertBatch" parameterType="list">
+        INSERT ALL
+        <foreach collection="list" item="item" separator=" ">
+            INTO sales_order (
+            id, sales_organization, sales_department,
+            sold_to_party, sold_to_party_name, sales_region,
+            order_date, order_type, approval_status,
+            order_number, order_item, account_setting_group,
+            material_code, material_description, earliest_delivery_date,
+            order_quantity, unit, ship_to_party,
+            ship_to_party_name, unloading_point, price_list_type,
+            pricing_date, unit_price, net_sales_value,
+            subtotal, tax_amount, latest_sales_price,
+            price_excl_tax, latest_amount, net_weight,
+            gross_weight, weight_unit, plant,
+            shipping_point, storage_location, delivered_quantity,
+            shipped_quantity, invoiced_quantity, delivery_status,
+            creator_name, creation_date, delivery_block,
+            invoice_block, order_reason, rejection_reason,
+            invoice_type, material_group,
+            tenant_id, creator, create_time, updater, update_time, deleted
+            ) VALUES (
+            #{item.id, jdbcType=BIGINT},
+            #{item.salesOrganization, jdbcType=VARCHAR},
+            #{item.salesDepartment, jdbcType=VARCHAR},
+            #{item.soldToParty, jdbcType=VARCHAR},
+            #{item.soldToPartyName, jdbcType=VARCHAR},
+            #{item.salesRegion, jdbcType=VARCHAR},
+            #{item.orderDate, jdbcType=TIMESTAMP},
+            #{item.orderType, jdbcType=VARCHAR},
+            #{item.approvalStatus, jdbcType=VARCHAR},
+            #{item.orderNumber, jdbcType=VARCHAR},
+            #{item.orderItem, jdbcType=INTEGER},
+            #{item.accountSettingGroup, jdbcType=VARCHAR},
+            #{item.materialCode, jdbcType=VARCHAR},
+            #{item.materialDescription, jdbcType=VARCHAR},
+            #{item.earliestDeliveryDate, jdbcType=TIMESTAMP},
+            #{item.orderQuantity, jdbcType=DECIMAL},
+            #{item.unit, jdbcType=VARCHAR},
+            #{item.shipToParty, jdbcType=VARCHAR},
+            #{item.shipToPartyName, jdbcType=VARCHAR},
+            #{item.unloadingPoint, jdbcType=VARCHAR},
+            #{item.priceListType, jdbcType=VARCHAR},
+            #{item.pricingDate, jdbcType=TIMESTAMP},
+            #{item.unitPrice, jdbcType=DECIMAL},
+            #{item.netSalesValue, jdbcType=DECIMAL},
+            #{item.subtotal, jdbcType=DECIMAL},
+            #{item.taxAmount, jdbcType=DECIMAL},
+            #{item.latestSalesPrice, jdbcType=DECIMAL},
+            #{item.priceExclTax, jdbcType=DECIMAL},
+            #{item.latestAmount, jdbcType=DECIMAL},
+            #{item.netWeight, jdbcType=DECIMAL},
+            #{item.grossWeight, jdbcType=DECIMAL},
+            #{item.weightUnit, jdbcType=VARCHAR},
+            #{item.plant, jdbcType=VARCHAR},
+            #{item.shippingPoint, jdbcType=VARCHAR},
+            #{item.storageLocation, jdbcType=VARCHAR},
+            #{item.deliveredQuantity, jdbcType=DECIMAL},
+            #{item.shippedQuantity, jdbcType=DECIMAL},
+            #{item.invoicedQuantity, jdbcType=DECIMAL},
+            #{item.deliveryStatus, jdbcType=VARCHAR},
+            #{item.creatorName, jdbcType=VARCHAR},
+            #{item.creationDate, jdbcType=TIMESTAMP},
+            #{item.deliveryBlock, jdbcType=VARCHAR},
+            #{item.invoiceBlock, jdbcType=VARCHAR},
+            #{item.orderReason, jdbcType=VARCHAR},
+            #{item.rejectionReason, jdbcType=VARCHAR},
+            #{item.invoiceType, jdbcType=VARCHAR},
+            #{item.materialGroup, jdbcType=VARCHAR},
+            1,
+            #{item.creator, jdbcType=VARCHAR},
+            #{item.createTime, jdbcType=TIMESTAMP},
+            #{item.updater, jdbcType=VARCHAR},
+            #{item.updateTime, jdbcType=TIMESTAMP},
+            0
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+</mapper>

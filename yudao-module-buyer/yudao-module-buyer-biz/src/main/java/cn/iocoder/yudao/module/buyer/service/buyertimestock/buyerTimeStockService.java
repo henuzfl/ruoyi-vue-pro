@@ -52,4 +52,12 @@ public interface buyerTimeStockService {
      */
     PageResult<buyerTimeStockDO> getbuyerTimeStockPage(buyerTimeStockPageReqVO pageReqVO);
 
+
+    /**
+     * 批量插入库存数据
+     * @param stockList 库存数据列表
+     * @return 处理结果信息
+     */
+    String batchInsertOrUpdateStock(List<buyerTimeStockDO> stockList);
+
 }

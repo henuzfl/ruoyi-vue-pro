@@ -18,17 +18,18 @@
         <module>yudao-module-aps</module>
         <module>yudao-module-buyer</module>
         <module>yudao-module-wm</module>
+        <module>yudao-module-marketing</module>
         <!--        <module>yudao-module-member</module>-->
-<!--        <module>yudao-module-bpm</module>-->
-        <module>yudao-module-report</module>
-<!--        <module>yudao-module-mp</module>-->
-<!--        <module>yudao-module-pay</module>-->
-<!--        <module>yudao-module-mall</module>-->
-<!--        <module>yudao-module-crm</module>-->
-<!--        <module>yudao-module-erp</module>-->
-<!--        <module>yudao-module-iot</module>-->
+        <!--        <module>yudao-module-bpm</module>-->
+        <!--        <module>yudao-module-report</module>-->
+        <!--        <module>yudao-module-mp</module>-->
+        <!--        <module>yudao-module-pay</module>-->
+        <!--        <module>yudao-module-mall</module>-->
+        <!--        <module>yudao-module-crm</module>-->
+        <!--        <module>yudao-module-erp</module>-->
+        <!--        <module>yudao-module-iot</module>-->
         <!-- AI 大模型的开启，请参考 https://doc.iocoder.cn/ai/build/ 文档，对 JDK 版本要要求！ -->
-<!--        <module>yudao-module-ai</module>-->
+        <!--        <module>yudao-module-ai</module>-->
     </modules>
 
     <name>${project.artifactId}</name>
@@ -49,6 +50,9 @@
         <spring.boot.version>2.7.18</spring.boot.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- SAP JCo 版本 -->
+        <sapjco3.version>3.1.0</sapjco3.version>
     </properties>
 
     <dependencyManagement>
@@ -71,9 +75,16 @@
                 <artifactId>orai18n</artifactId>
                 <version>21.5.0.0</version>
             </dependency>
-        </dependencies>
 
-</dependencyManagement>
+            <!-- SAP JCo 依赖管理 -->
+            <dependency>
+                <groupId>com.sap.conn.jco</groupId>
+                <artifactId>sapjco3</artifactId>
+                <version>${sapjco3.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <pluginRepositories>
         <pluginRepository>
             <id>aliyun</id>
@@ -86,6 +97,7 @@
             </snapshots>
         </pluginRepository>
     </pluginRepositories>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -196,5 +208,4 @@
             </releases>
         </repository>
     </repositories>
-
 </project>

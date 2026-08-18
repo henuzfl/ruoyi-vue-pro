@@ -53,4 +53,27 @@ public interface OrderDemandService {
      */
     PageResult<OrderDemandDO> getOrderDemandPage(OrderDemandPageReqVO pageReqVO);
 
+    /**
+     * 批量导入订单追溯需求
+     * @param importVOList 导入数据列表
+     * @return 成功导入条数
+     */
+    int importOrderDemand(List<OrderDemandImportReqVO> importVOList);
+
+    // 在接口中添加以下方法声明
+
+    /**
+     * 从 SAP 同步订单需求数据（生产订单预留）
+     * @param reqVO 查询参数
+     * @return 同步成功的记录数
+     */
+    int syncOrderDemandFromSap(SapResbQueryReqVO reqVO);
+
+    /**
+     * 仅查询 SAP 预留数据（不保存）
+     * @param reqVO 查询参数
+     * @return 预留数据列表
+     */
+    List<OrderDemandFromSapVO> searchResbFromSap(SapResbQueryReqVO reqVO);
+
 }

@@ -1,0 +1,577 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.aps.dal.mysql.mainplanprogressreport.MainPlanProgressReportMapper">
+
+    <!--
+        一般情况下，尽可能使用 Mapper 进行 CRUD 增删改查即可。
+        无法满足的场景，例如说多表关联查询，才使用 XML 编写 SQL。
+        代码生成器暂时只生成 Mapper XML 文件本身，更多推荐 MybatisX 快速开发插件来生成查询。
+        文档可见：https://www.iocoder.cn/MyBatis/x-plugins/
+     -->
+
+    <select id="selectProgressReport" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplanprogressreport.vo.MainPlanProgressReportRespVO">
+        SELECT
+            p.production_order_no AS productionOrderNo,
+            p.assembly_order_quantity AS assemblyOrderQuantity,
+            p.assembly_material_no AS assemblyMaterialNo,
+            p.main_material_desc AS mainMaterialDesc,
+            p.base_completion_date AS baseCompletionDate,
+            p.production_workshop AS productionWorkshop,
+            p.order_create_time AS orderCreateTime,
+            p.scheduled_quantity AS scheduledQuantity,
+            p.SCHEDULED_DATE as scheduleddate,
+            COALESCE(t.workshop_output, 0) AS workshopOutput,
+            p.scheduled_quantity - COALESCE(t.workshop_output, 0) AS difference
+        FROM aps_main_plan p
+                 LEFT JOIN (
+            SELECT order_no, material_code, SUM(quantity) AS workshop_output
+            FROM buyer_production_transfer
+            WHERE deleted = '0' AND TO_CHAR(INITIATOR_DATE,'YYYY-MM') = TO_CHAR(SYSDATE,'YYYY-MM')
+            GROUP BY order_no, material_code
+        ) t ON p.production_order_no = LTRIM(t.order_no, '0')
+            AND p.assembly_material_no = t.material_code
+        WHERE p.deleted = 0
+        ORDER BY p.production_order_no, p.assembly_material_no
+    </select>
+
+    <sql id="whereCondition">
+        <where>
+            p.deleted = 0
+            <if test="productionOrderNo != null and productionOrderNo != ''">
+                AND p.production_order_no = #{productionOrderNo}
+            </if>
+            <if test="assemblyMaterialNo != null and assemblyMaterialNo != ''">
+                AND p.assembly_material_no = #{assemblyMaterialNo}
+            </if>
+            <if test="mainMaterialDesc != null and mainMaterialDesc != ''">
+                AND p.main_material_desc = #{mainMaterialDesc}
+            </if>
+            <if test="scheduledDateStart != null">
+                AND p.scheduled_date &gt;= #{scheduledDateStart}
+            </if>
+            <if test="scheduledDateEnd != null">
+                AND p.scheduled_date &lt;= #{scheduledDateEnd}
+            </if>
+            <if test="scheduledQuantity != null">
+                AND p.scheduled_quantity = #{scheduledQuantity}
+            </if>
+            <if test="productionWorkshop != null and productionWorkshop != ''">
+                AND p.production_workshop = #{productionWorkshop}
+            </if>
+            <if test="createTimeStart != null">
+                AND p.create_time &gt;= #{createTimeStart}
+            </if>
+            <if test="createTimeEnd != null">
+                AND p.create_time &lt;= #{createTimeEnd}
+            </if>
+        </where>
+    </sql>
+
+    <!-- 查询总数 -->
+    <select id="selectProgressReportCount" resultType="long">
+        SELECT COUNT(*)
+        FROM aps_main_plan p
+        LEFT JOIN (
+        SELECT order_no, material_code, SUM(quantity) AS workshop_output
+        FROM buyer_production_transfer
+        WHERE deleted = '0'
+        GROUP BY order_no, material_code
+        ) t ON p.production_order_no = LTRIM(t.order_no, '0')
+        AND p.assembly_material_no = t.material_code
+        <include refid="whereCondition" />
+    </select>
+
+    <!-- 分页查询 -->
+    <select id="selectProgressReportPage" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplanprogressreport.vo.MainPlanProgressReportRespVO">
+        SELECT * FROM (
+        SELECT t.*, ROWNUM AS rn FROM (
+        SELECT
+        p.production_order_no AS productionOrderNo,
+        p.assembly_order_quantity AS assemblyOrderQuantity,
+        p.assembly_material_no AS assemblyMaterialNo,
+        p.main_material_desc AS mainMaterialDesc,
+        p.base_completion_date AS baseCompletionDate,
+        p.production_workshop AS productionWorkshop,
+        p.order_create_time AS orderCreateTime,
+        p.scheduled_quantity AS scheduledQuantity,
+        p.scheduled_date AS scheduledDate,
+        COALESCE(t.workshop_output, 0) AS workshopOutput,
+        p.scheduled_quantity - COALESCE(t.workshop_output, 0) AS difference
+        FROM aps_main_plan p
+        LEFT JOIN (
+        SELECT order_no, material_code, SUM(quantity) AS workshop_output
+        FROM buyer_production_transfer
+        WHERE deleted = '0'
+        GROUP BY order_no, material_code
+        ) t ON p.production_order_no = LTRIM(t.order_no, '0')
+        AND p.assembly_material_no = t.material_code
+        <include refid="whereCondition" />
+        ORDER BY p.production_order_no, p.assembly_material_no
+        ) t
+        WHERE ROWNUM &lt;= (#{pageNo} * #{pageSize})
+        ) t2
+        WHERE t2.rn &gt; ((#{pageNo} - 1) * #{pageSize})
+    </select>
+
+
+
+    <!-- 概览卡片数据 -->
+    <select id="selectOverview" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplanprogressreport.vo.DashboardOverviewRespVO">
+        WITH order_base AS (
+        SELECT
+        order_no,
+        MAX(quantity) AS plan_qty,
+        MAX(completed_quantity) AS completed_qty,
+        MAX(transfer_order) AS transfer_order,
+        SUM(purchase_required_qty) AS total_required_qty,
+        COUNT(DISTINCT CASE WHEN open_order_quantity > 0 THEN purchase_material END) AS shortage_part_count
+        FROM aps_matching_result
+        WHERE deleted = 0
+        <if test="startDate != null and startDate != ''">
+            AND schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND workshop = #{workshop}
+        </if>
+        <if test="supplier != null and supplier != ''">
+            AND supplier_name = #{supplier}
+        </if>
+        <![CDATA[
+        AND create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+        AND create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+        ]]>
+        GROUP BY order_no
+        ),
+        order_flag AS (
+        SELECT
+        order_no,
+        plan_qty,
+        completed_qty,
+        total_required_qty,
+        CASE WHEN shortage_part_count > 0 THEN 1 ELSE 0 END AS has_shortage,
+        CASE WHEN transfer_order >= plan_qty THEN 1 ELSE 0 END AS is_transfer_completed
+        FROM order_base
+        ),
+        total_req AS (
+        SELECT NVL(SUM(purchase_required_qty), 0) AS total_required_qty
+        FROM aps_matching_result
+        WHERE deleted = 0
+        <if test="startDate != null and startDate != ''">
+            AND schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND workshop = #{workshop}
+        </if>
+        <if test="supplier != null and supplier != ''">
+            AND supplier_name = #{supplier}
+        </if>
+        <![CDATA[
+        AND create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+        AND create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+        ]]>
+        ),
+        completed_shortage AS (
+        SELECT NVL(SUM(r.open_order_quantity), 0) AS completed_shortage_qty
+        FROM aps_matching_result r
+        WHERE r.deleted = 0
+        AND r.open_order_quantity > 0
+        AND EXISTS (
+        SELECT 1 FROM order_flag f
+        WHERE f.order_no = r.order_no
+        AND f.is_transfer_completed = 1
+        AND f.has_shortage = 1
+        )
+        <if test="startDate != null and startDate != ''">
+            AND r.schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND r.schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND r.workshop = #{workshop}
+        </if>
+        <if test="supplier != null and supplier != ''">
+            AND r.supplier_name = #{supplier}
+        </if>
+        <![CDATA[
+        AND r.create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+        AND r.create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+        ]]>
+        )
+        SELECT
+        (SELECT COUNT(order_no) FROM order_flag) AS totalOrders,
+        (SELECT NVL(SUM(plan_qty), 0) FROM order_flag) AS totalPlanQty,
+        (SELECT NVL(SUM(completed_qty), 0) FROM order_flag) AS totalCompletedQty,
+        CASE WHEN (SELECT SUM(plan_qty) FROM order_flag) = 0 THEN 0
+        ELSE ROUND((SELECT SUM(completed_qty) FROM order_flag) / (SELECT SUM(plan_qty) FROM order_flag) * 100, 2)
+        END AS completionRate,
+        (SELECT COUNT(CASE WHEN has_shortage = 1 THEN 1 END) FROM order_flag) AS shortageOrders,
+        (SELECT total_required_qty FROM total_req) AS totalRequiredQty,
+        (SELECT completed_shortage_qty FROM completed_shortage) AS completedShortageQty,
+        (SELECT CASE WHEN COUNT(order_no) = 0 THEN 0
+        ELSE ROUND((1 - COUNT(CASE WHEN has_shortage = 1 THEN 1 END) / COUNT(order_no)) * 100, 2)
+        END FROM order_flag) AS kitRate,
+        TO_CHAR(SYSDATE, 'YYYY-MM-DD HH24:MI:SS') AS lastUpdateTime
+        FROM DUAL
+    </select>
+
+    <!-- 车间维度 -->
+    <select id="selectWorkshopStats" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplanprogressreport.vo.DashboardWorkshopRespVO">
+        SELECT
+        workshop,
+        COUNT(DISTINCT order_no) AS orderCount,
+        NVL(SUM(quantity), 0) AS planQty,
+        NVL(SUM(completed_quantity), 0) AS completeQty,
+        CASE WHEN SUM(quantity) = 0 THEN 0
+        ELSE ROUND(SUM(completed_quantity) / SUM(quantity) * 100, 2)
+        END AS completionRate,
+        COUNT(DISTINCT CASE WHEN open_order_quantity > 0 THEN order_no END) AS shortageOrders
+        FROM (
+        SELECT
+        workshop,
+        order_no,
+        MAX(quantity) AS quantity,
+        MAX(completed_quantity) AS completed_quantity,
+        MAX(open_order_quantity) AS open_order_quantity
+        FROM aps_matching_result
+        WHERE deleted = 0
+        <if test="startDate != null and startDate != ''">
+            AND schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND workshop = #{workshop}
+        </if>
+        <if test="supplier != null and supplier != ''">
+            AND supplier_name = #{supplier}
+        </if>
+        <![CDATA[
+        AND create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+        AND create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+        ]]>
+        GROUP BY workshop, order_no
+        )
+        GROUP BY workshop
+        ORDER BY workshop
+    </select>
+
+    <!-- 供应商维度 -->
+    <select id="selectSupplierStats" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplanprogressreport.vo.DashboardSupplierRespVO">
+        SELECT
+        supplier_name AS supplier,
+        COUNT(DISTINCT purchase_order) AS openOrderCount,
+        NVL(SUM(open_order_quantity), 0) AS openQty,
+        COUNT(DISTINCT component_code) AS affectedParts,
+        COUNT(DISTINCT order_no) AS affectedOrders
+        FROM aps_matching_result
+        WHERE deleted = 0
+        AND supplier_name IS NOT NULL
+        <if test="startDate != null and startDate != ''">
+            AND schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND workshop = #{workshop}
+        </if>
+        <if test="supplier != null and supplier != ''">
+            AND supplier_name = #{supplier}
+        </if>
+        <![CDATA[
+        AND create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+        AND create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+        ]]>
+        GROUP BY supplier_name
+        HAVING SUM(open_order_quantity) > 0  <!-- 或者用 SUM(open_order_quantity) > 0，效果类似 -->
+        ORDER BY openQty DESC
+    </select>
+
+    <!-- 物料短缺 Top5 -->
+    <select id="selectMaterialShortage" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplanprogressreport.vo.DashboardMaterialShortageRespVO">
+        SELECT * FROM (
+        SELECT
+        purchase_material AS componentCode,
+        purchase_material_desc AS componentDesc,
+        NVL(SUM(OPEN_ORDER_QUANTITY), 0) AS shortageQty,
+        COUNT(DISTINCT order_no) AS affectedOrders
+        FROM aps_matching_result
+        WHERE deleted = 0
+        AND OPEN_ORDER_QUANTITY > 0
+        <if test="startDate != null and startDate != ''">
+            AND schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND workshop = #{workshop}
+        </if>
+        <if test="supplier != null and supplier != ''">
+            AND supplier_name = #{supplier}
+        </if>
+        <![CDATA[
+            AND create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+            AND create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+            ]]>
+        GROUP BY purchase_material, purchase_material_desc
+        ORDER BY NVL(SUM(OPEN_ORDER_QUANTITY), 0) DESC
+        ) WHERE ROWNUM &lt;= 5
+    </select>
+
+    <!-- 订单执行明细（分页） -->
+    <select id="selectOrderPage" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplanprogressreport.vo.DashboardOrderRespVO">
+        SELECT * FROM (
+        SELECT t.*, ROWNUM AS rn FROM (
+        SELECT
+        b.order_no AS orderNo,
+        MAX(b.material_Code) AS materialCode,
+        MAX(b.material_desc) AS materialDesc,
+        MAX(b.workshop) AS workshop,
+        MAX(b.schedule_time) AS scheduleTime,
+        MAX(b.quantity) AS quantity,
+        MAX(b.TOTAL_QTY) as totalQty,
+        MAX(b.completed_quantity) AS completedQuantity,
+        MAX(b.transfer_order) AS transferOrder,
+        COUNT(DISTINCT CASE WHEN b.open_order_quantity > 0 THEN b.purchase_material END) AS shortageCount,
+        (SELECT WM_CONCAT(w2.component_desc)
+        FROM (SELECT DISTINCT w.order_no, w.purchase_material_desc AS component_desc
+        FROM aps_matching_result w
+        WHERE w.open_order_quantity > 0
+        AND w.deleted = 0
+        <if test="req.startDate != null and req.startDate != ''">
+            AND w.schedule_time >= TO_DATE(#{req.startDate}, 'YYYY-MM-DD HH24:MI:SS')
+        </if>
+        <if test="req.endDate != null and req.endDate != ''">
+            AND w.schedule_time <![CDATA[ < ]]> TO_DATE(#{req.endDate}, 'YYYY-MM-DD HH24:MI:SS') + 1
+        </if>
+        <if test="req.workshop != null and req.workshop != ''">
+            AND w.workshop = #{req.workshop}
+        </if>
+        <if test="req.supplier != null and req.supplier != ''">
+            AND w.supplier_name = #{req.supplier}
+        </if>
+        <if test="req.materialCode != null and req.materialCode != ''">
+            AND w.order_no IN (SELECT DISTINCT order_no FROM aps_matching_result WHERE purchase_material = #{req.materialCode} OR material_code = #{req.materialCode})
+        </if>
+        <![CDATA[
+                         AND w.create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+                         AND w.create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+                         ]]>
+        ) w2
+        WHERE w2.order_no = b.order_no
+        ) AS warning
+        FROM aps_matching_result b
+        WHERE b.deleted = 0
+        <if test="req.startDate != null and req.startDate != ''">
+            AND b.schedule_time >= TO_DATE(#{req.startDate}, 'YYYY-MM-DD HH24:MI:SS')
+        </if>
+        <if test="req.endDate != null and req.endDate != ''">
+            AND b.schedule_time <![CDATA[ < ]]> TO_DATE(#{req.endDate}, 'YYYY-MM-DD HH24:MI:SS') + 1
+        </if>
+        <if test="req.workshop != null and req.workshop != ''">
+            AND b.workshop = #{req.workshop}
+        </if>
+        <if test="req.supplier != null and req.supplier != ''">
+            AND b.supplier_name = #{req.supplier}
+        </if>
+        <if test="req.materialCode != null and req.materialCode != ''">
+            AND b.order_no IN (SELECT DISTINCT order_no FROM aps_matching_result WHERE purchase_material = #{req.materialCode} OR material_code = #{req.materialCode} )
+        </if>
+        <![CDATA[
+                AND b.create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+                AND b.create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+                ]]>
+        GROUP BY b.order_no
+        <if test="req.onlyAbnormal != null and req.onlyAbnormal == true">
+            HAVING COUNT(CASE WHEN b.open_order_quantity > 0 THEN 1 END) > 0
+        </if>
+        ORDER BY MAX(b.schedule_time), MAX(b.workshop), b.order_no
+        ) t
+        WHERE ROWNUM &lt;= (#{req.pageNo} * #{req.pageSize})
+        ) t2
+        WHERE t2.rn &gt; ((#{req.pageNo} - 1) * #{req.pageSize})
+        ORDER BY scheduleTime,workshop,orderNo
+    </select>
+
+    <select id="selectOverviewByCreateDate" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplanprogressreport.vo.DashboardOverviewRespVO">
+        WITH order_base AS (
+        SELECT
+        order_no,
+        MAX(quantity) AS plan_qty,
+        MAX(completed_quantity) AS completed_qty,
+        MAX(transfer_order) AS transfer_order,
+        SUM(purchase_required_qty) AS total_required_qty,
+        COUNT(DISTINCT CASE WHEN open_order_quantity > 0 THEN purchase_material END) AS shortage_part_count
+        FROM aps_matching_result
+        WHERE deleted = 0
+        <if test="startDate != null and startDate != ''">
+            AND schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND workshop = #{workshop}
+        </if>
+        <if test="supplier != null and supplier != ''">
+            AND supplier_name = #{supplier}
+        </if>
+        AND create_time >= TO_DATE(#{createDate}, 'YYYY-MM-DD')
+        AND create_time &lt; TO_DATE(#{createDate}, 'YYYY-MM-DD') + 1
+        GROUP BY order_no
+        ),
+        order_flag AS (
+        SELECT
+        order_no,
+        plan_qty,
+        completed_qty,
+        total_required_qty,
+        CASE WHEN shortage_part_count > 0 THEN 1 ELSE 0 END AS has_shortage,
+        CASE WHEN transfer_order >= plan_qty THEN 1 ELSE 0 END AS is_transfer_completed
+        FROM order_base
+        ),
+        total_req AS (
+        SELECT NVL(SUM(purchase_required_qty), 0) AS total_required_qty
+        FROM aps_matching_result
+        WHERE deleted = 0
+        <if test="startDate != null and startDate != ''">
+            AND schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND workshop = #{workshop}
+        </if>
+        <if test="supplier != null and supplier != ''">
+            AND supplier_name = #{supplier}
+        </if>
+        AND create_time >= TO_DATE(#{createDate}, 'YYYY-MM-DD')
+        AND create_time &lt; TO_DATE(#{createDate}, 'YYYY-MM-DD') + 1
+        ),
+        completed_shortage AS (
+        SELECT NVL(SUM(r.open_order_quantity), 0) AS completed_shortage_qty
+        FROM aps_matching_result r
+        WHERE r.deleted = 0
+        AND r.open_order_quantity > 0
+        AND EXISTS (
+        SELECT 1 FROM order_flag f
+        WHERE f.order_no = r.order_no
+        AND f.is_transfer_completed = 1
+        AND f.has_shortage = 1
+        )
+        <if test="startDate != null and startDate != ''">
+            AND r.schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND r.schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND r.workshop = #{workshop}
+        </if>
+        <if test="supplier != null and supplier != ''">
+            AND r.supplier_name = #{supplier}
+        </if>
+        AND r.create_time >= TO_DATE(#{createDate}, 'YYYY-MM-DD')
+        AND r.create_time &lt; TO_DATE(#{createDate}, 'YYYY-MM-DD') + 1
+        )
+        SELECT
+        (SELECT COUNT(order_no) FROM order_flag) AS totalOrders,
+        (SELECT NVL(SUM(plan_qty), 0) FROM order_flag) AS totalPlanQty,
+        (SELECT NVL(SUM(completed_qty), 0) FROM order_flag) AS totalCompletedQty,
+        CASE WHEN (SELECT SUM(plan_qty) FROM order_flag) = 0 THEN 0
+        ELSE ROUND((SELECT SUM(completed_qty) FROM order_flag) / (SELECT SUM(plan_qty) FROM order_flag) * 100, 2)
+        END AS completionRate,
+        (SELECT COUNT(CASE WHEN has_shortage = 1 THEN 1 END) FROM order_flag) AS shortageOrders,
+        (SELECT total_required_qty FROM total_req) AS totalRequiredQty,
+        (SELECT completed_shortage_qty FROM completed_shortage) AS completedShortageQty,
+        (SELECT CASE WHEN COUNT(order_no) = 0 THEN 0
+        ELSE ROUND((1 - COUNT(CASE WHEN has_shortage = 1 THEN 1 END) / COUNT(order_no)) * 100, 2)
+        END FROM order_flag) AS kitRate,
+        TO_CHAR(TO_DATE(#{createDate}, 'YYYY-MM-DD'), 'YYYY-MM-DD HH24:MI:SS') AS lastUpdateTime
+        FROM DUAL
+    </select>
+
+    <!-- 订单缺料零件详情 -->
+    <select id="selectOrderShortages" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplanprogressreport.vo.OrderShortageRespVO">
+        SELECT
+            purchase_material AS componentCode,
+            purchase_material_desc AS componentDesc,
+            PURCHASE_REQUIRED_QTY AS requiredQty,
+            OPEN_ORDER_QUANTITY AS shortage,
+            TO_CHAR(basic_start_date, 'YYYY-MM-DD') AS expectedDate,
+            DELIVERED_QUANTITY + to_deliver_quantity AS inTransit,
+            schedule_time AS scheduleTime
+        FROM aps_matching_result
+        WHERE order_no = #{orderNo}
+          AND OPEN_ORDER_QUANTITY > 0
+          AND deleted = 0
+        <![CDATA[
+          AND create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+          AND create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+        ]]>
+    ORDER BY purchase_material
+    </select>
+
+    <!-- 零件采购订单列表 -->
+    <select id="selectComponentPurchases" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplanprogressreport.vo.ComponentPurchaseRespVO">
+        SELECT
+            purchase_order AS purchaseOrder,
+            supplier_name AS supplier,
+            order_date AS orderDate,
+            required_delivery_date AS requiredDate,
+            purchase_required_qty AS orderQty,
+            delivered_quantity AS receivedQty,
+            open_order_quantity AS openQty
+        FROM aps_matching_result
+        WHERE purchase_material = #{componentCode}
+          AND order_no = #{orderNo}
+          AND purchase_order IS NOT NULL
+          AND deleted = 0
+        <![CDATA[
+          AND create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+          AND create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+        ]]>
+    ORDER BY order_date
+    </select>
+    <!-- 订单执行明细分页总数 -->
+    <select id="selectOrderPageCount" resultType="long">
+        SELECT COUNT(*) FROM (
+        SELECT order_no
+        FROM aps_matching_result
+        WHERE deleted = 0
+        <if test="req.startDate != null and req.startDate != ''">
+            AND schedule_time &gt;= TO_DATE(#{req.startDate}, 'YYYY-MM-DD HH24:MI:SS')
+        </if>
+        <if test="req.endDate != null and req.endDate != ''">
+            AND schedule_time &lt; TO_DATE(#{req.endDate}, 'YYYY-MM-DD HH24:MI:SS') + 1
+        </if>
+        <if test="req.workshop != null and req.workshop != ''">
+            AND workshop = #{req.workshop}
+        </if>
+        <if test="req.supplier != null and req.supplier != ''">
+            AND supplier_name = #{req.supplier}
+        </if>
+        <if test="req.materialCode != null and req.materialCode != ''">
+            AND order_no IN (SELECT DISTINCT order_no FROM aps_matching_result WHERE purchase_material = #{req.materialCode} OR material_code = #{req.materialCode})
+        </if>
+        <![CDATA[
+            AND create_time >= (SELECT TRUNC(MAX(create_time)) FROM aps_matching_result WHERE deleted = 0)
+            AND create_time <  (SELECT TRUNC(MAX(create_time)) + 1 FROM aps_matching_result WHERE deleted = 0)
+            ]]>
+        GROUP BY order_no
+        <if test="req.onlyAbnormal != null and req.onlyAbnormal == true">
+            HAVING COUNT(CASE WHEN open_order_quantity &gt; 0 THEN 1 END) &gt; 0
+        </if>
+        )
+    </select>
+</mapper>

@@ -13,10 +13,6 @@ import com.alibaba.excel.annotation.*;
 @ExcelIgnoreUnannotated
 public class KittingMasterRespVO {
 
-    @Schema(description = "主键ID", requiredMode = Schema.RequiredMode.REQUIRED, example = "9944")
-    @ExcelProperty("主键ID")
-    private BigDecimal id;
-
     @Schema(description = "生产订单号", requiredMode = Schema.RequiredMode.REQUIRED)
     @ExcelProperty("生产订单号")
     private String productionOrderNo;
@@ -29,6 +25,14 @@ public class KittingMasterRespVO {
     @ExcelProperty("主物料描述")
     private String mainMaterialDesc;
 
+    @Schema(description = "订单类型")
+    @ExcelProperty("订单类型")
+    private String orderMessage;
+
+    @Schema(description = "父订单")
+    @ExcelProperty("父订单")
+    private String parentOrderNo;
+
     @Schema(description = "排产数量")
     @ExcelProperty("排产数量")
     private BigDecimal scheduledQuantity;
@@ -37,57 +41,18 @@ public class KittingMasterRespVO {
     @ExcelProperty("生产车间")
     private String productionWorkshop;
 
-    @Schema(description = "创建时间")
-    @ExcelProperty("创建时间")
-    private LocalDateTime createTime;
-
     // 新增字段
     @Schema(description = "排产时间")
     @ExcelProperty("排产时间")
     private LocalDateTime scheduledDate;
 
-    @Schema(description = "是否齐套")
-    @ExcelProperty("是否齐套")
-    private String kittingStatus;
-
     @Schema(description = "总成是否齐套")
     @ExcelProperty("总成是否齐套")
     private String assemblyKittingStatus;
+    //private String kittingStatus;
 
-    @Schema(description = "组件物料号")
-    @ExcelProperty("组件物料号")
-    private String componentMaterialNo;
-
-    @Schema(description = "组件物料名称")
-    @ExcelProperty("组件物料名称")
-    private String componentDesc;
-
-    @Schema(description = "单件物料数量")
-    @ExcelProperty("单件物料数量")
-    private BigDecimal unitUsage;
-
-    @Schema(description = "所需组件数量")
-    @ExcelProperty("所需组件数量")
-    private BigDecimal requiredQty;
-
-    @Schema(description = "明天库存")
-    @ExcelProperty("明天库存")
-    private BigDecimal stockTomorrow;
-
-    @Schema(description = "后天库存")
-    @ExcelProperty("后天库存")
-    private BigDecimal stockDayAfterTomorrow;
-
-    @Schema(description = "第三天库存")
-    @ExcelProperty("第三天库存")
-    private BigDecimal stockThirdDay;
-
-    @Schema(description = "总库存数量")
-    @ExcelProperty("总库存数量")
-    private BigDecimal stockQuantity;
-
-    @Schema(description = "差额")
-    @ExcelProperty("差额")
-    private BigDecimal shortageQty;
+    @Schema(description = "是否全部出库")
+    @ExcelProperty("是否全部出库")
+    private String openFlag;
 
 }

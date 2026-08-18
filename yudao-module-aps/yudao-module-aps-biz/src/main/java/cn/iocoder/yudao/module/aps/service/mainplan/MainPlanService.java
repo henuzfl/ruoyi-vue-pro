@@ -7,6 +7,7 @@ import cn.iocoder.yudao.module.aps.controller.admin.mainplan.vo.*;
 import cn.iocoder.yudao.module.aps.dal.dataobject.mainplan.MainPlanDO;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.pojo.PageParam;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 主计划 Service 接口
@@ -30,12 +31,6 @@ public interface MainPlanService {
      */
     void updateMainPlan(@Valid MainPlanSaveReqVO updateReqVO);
 
-    /**
-     * 删除主计划
-     *
-     * @param id 编号
-     */
-    void deleteMainPlan(BigDecimal id);
 
     /**
      * 获得主计划
@@ -52,5 +47,26 @@ public interface MainPlanService {
      * @return 主计划分页
      */
     PageResult<MainPlanDO> getMainPlanPage(MainPlanPageReqVO pageReqVO);
+
+    /**
+     * 获取所有去重的总成物料号
+     */
+    List<String> getDistinctAssemblyMaterialNo();
+
+    /**
+     * 获取所有去重的总成一级子件物料号
+     */
+    List<String> getDistinctComponentMaterialNo();
+
+    /**
+     * 批量导入主计划
+     * @param importVOList 导入数据列表
+     * @return 成功导入条数
+     */
+    int importMainPlan(List<MainPlanImportReqVO> importVOList);
+
+    void deleteMainPlan(BigDecimal id);
+
+    void clearAllMainPlan();
 
 }

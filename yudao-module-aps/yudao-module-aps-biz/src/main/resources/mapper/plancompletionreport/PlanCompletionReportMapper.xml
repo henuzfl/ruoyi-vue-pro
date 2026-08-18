@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.aps.dal.mysql.plancompletionreport.PlanCompletionReportMapper">
+
+    <!-- 通用查询结果列 -->
+    <sql id="Base_Column_List">
+        plan_date, workshop, daily_plan_qty, daily_actual_qty, planned_completion, planned_completion_rate,
+        cum_completion_qty, delayed_completion, unfinished_qty, cum_unfinished_qty, main_plan_qty,
+        main_planned_completion, main_planned_completion_rate, urgent_unfinished_qty
+    </sql>
+
+    <!-- 核心报表查询SQL（与用户提供的查询SQL一致，增加日期和车间过滤） -->
+    <sql id="reportSql">
+        WITH
+        assy_order_workshop AS (
+            SELECT DISTINCT order_no, workshop
+            FROM APS_ASSEMBLY_PLAN
+        ),
+        assy_plan AS (
+            SELECT order_no, workshop,
+                   TRUNC(SCHEDULE_TIME) AS plan_date,
+                   SUM(ASSEMBLY_QUANTITY) AS plan_qty
+            FROM APS_ASSEMBLY_PLAN
+            GROUP BY order_no, workshop, TRUNC(SCHEDULE_TIME)
+        ),
+        trans_raw AS (
+            SELECT order_no,
+                   TRUNC(INITIATOR_DATE) AS trans_date,
+                   SUM(QUANTITY) AS trans_qty
+            FROM BUYER_PRODUCTION_TRANSFER
+            WHERE QUANTITY > 0
+            GROUP BY order_no, TRUNC(INITIATOR_DATE)
+        ),
+        trans_assy AS (
+            SELECT t.order_no, ow.workshop, t.trans_date, t.trans_qty
+            FROM trans_raw t
+            JOIN assy_order_workshop ow ON t.order_no = ow.order_no
+        ),
+        total_trans_assy AS (
+            SELECT order_no, workshop, SUM(trans_qty) AS total_qty
+            FROM trans_assy
+            GROUP BY order_no, workshop
+        ),
+        plan_detail_assy AS (
+            SELECT p.order_no, p.workshop, p.plan_date, p.plan_qty,
+                   NVL(t.trans_qty, 0) AS trans_qty,
+                   SUM(p.plan_qty) OVER (PARTITION BY p.order_no, p.workshop ORDER BY p.plan_date) AS cum_plan,
+                   SUM(NVL(t.trans_qty, 0)) OVER (PARTITION BY p.order_no, p.workshop ORDER BY p.plan_date) AS cum_trans,
+                   SUM(p.plan_qty) OVER (PARTITION BY p.order_no, p.workshop ORDER BY p.plan_date
+                       ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_cum_plan
+            FROM assy_plan p
+            LEFT JOIN trans_assy t ON p.order_no = t.order_no AND p.workshop = t.workshop AND p.plan_date = t.trans_date
+        ),
+        daily_agg_assy AS (
+            SELECT 
+                d.plan_date, d.workshop,
+                SUM(d.plan_qty) AS daily_plan_qty,
+                SUM(d.trans_qty) AS daily_actual_qty,
+                SUM(
+                    CASE 
+                        WHEN d.plan_qty > 0 THEN
+                            LEAST(
+                                GREATEST(0, d.trans_qty - GREATEST(COALESCE(d.prev_cum_plan,0) - (d.cum_trans - d.trans_qty), 0)),
+                                GREATEST(0, tt.total_qty - COALESCE(d.prev_cum_plan,0)),
+                                d.plan_qty
+                            )
+                        ELSE 0
+                    END
+                ) AS planned_completion,
+                SUM(
+                    GREATEST(0,
+                        LEAST(d.plan_qty, GREATEST(0, tt.total_qty - COALESCE(d.prev_cum_plan,0)))
+                    ) -
+                    CASE 
+                        WHEN d.plan_qty > 0 THEN
+                            LEAST(
+                                GREATEST(0, d.trans_qty - GREATEST(COALESCE(d.prev_cum_plan,0) - (d.cum_trans - d.trans_qty), 0)),
+                                GREATEST(0, tt.total_qty - COALESCE(d.prev_cum_plan,0)),
+                                d.plan_qty
+                            )
+                        ELSE 0
+                    END
+                ) AS delayed_completion,
+                SUM(
+                    d.plan_qty - GREATEST(0,
+                        LEAST(d.plan_qty, GREATEST(0, tt.total_qty - COALESCE(d.prev_cum_plan,0)))
+                    )
+                ) AS unfinished_qty
+            FROM plan_detail_assy d
+            LEFT JOIN total_trans_assy tt ON d.order_no = tt.order_no AND d.workshop = tt.workshop
+            WHERE d.plan_qty > 0
+            GROUP BY d.plan_date, d.workshop
+        ),
+        main_order_workshop AS (
+            SELECT DISTINCT production_order_no AS order_no, production_workshop AS workshop
+            FROM aps_main_plan
+        ),
+        main_plan AS (
+            SELECT production_order_no AS order_no, production_workshop AS workshop,
+                   TRUNC(SCHEDULED_DATE) AS plan_date,
+                   SUM(SCHEDULED_QUANTITY) AS plan_qty
+            FROM aps_main_plan
+            GROUP BY production_order_no, production_workshop, TRUNC(SCHEDULED_DATE)
+        ),
+        trans_main AS (
+            SELECT t.order_no, ow.workshop, t.trans_date, t.trans_qty
+            FROM trans_raw t
+            JOIN main_order_workshop ow ON t.order_no = ow.order_no
+        ),
+        total_trans_main AS (
+            SELECT order_no, workshop, SUM(trans_qty) AS total_qty
+            FROM trans_main
+            GROUP BY order_no, workshop
+        ),
+        plan_detail_main AS (
+            SELECT p.order_no, p.workshop, p.plan_date, p.plan_qty,
+                   NVL(t.trans_qty, 0) AS trans_qty,
+                   SUM(p.plan_qty) OVER (PARTITION BY p.order_no, p.workshop ORDER BY p.plan_date) AS cum_plan,
+                   SUM(NVL(t.trans_qty, 0)) OVER (PARTITION BY p.order_no, p.workshop ORDER BY p.plan_date) AS cum_trans,
+                   SUM(p.plan_qty) OVER (PARTITION BY p.order_no, p.workshop ORDER BY p.plan_date
+                       ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_cum_plan
+            FROM main_plan p
+            LEFT JOIN trans_main t ON p.order_no = t.order_no AND p.workshop = t.workshop AND p.plan_date = t.trans_date
+        ),
+        daily_agg_main AS (
+            SELECT 
+                d.plan_date, d.workshop,
+                SUM(d.plan_qty) AS main_plan_qty,
+                SUM(
+                    CASE 
+                        WHEN d.plan_qty > 0 THEN
+                            LEAST(
+                                GREATEST(0, d.trans_qty - GREATEST(COALESCE(d.prev_cum_plan,0) - (d.cum_trans - d.trans_qty), 0)),
+                                GREATEST(0, tt.total_qty - COALESCE(d.prev_cum_plan,0)),
+                                d.plan_qty
+                            )
+                        ELSE 0
+                    END
+                ) AS main_planned_completion
+            FROM plan_detail_main d
+            LEFT JOIN total_trans_main tt ON d.order_no = tt.order_no AND d.workshop = tt.workshop
+            WHERE d.plan_qty > 0
+            GROUP BY d.plan_date, d.workshop
+        ),
+        urgent_main_plan AS (
+            SELECT production_order_no AS order_no, production_workshop AS workshop,
+                   TRUNC(SCHEDULED_DATE) AS plan_date,
+                   SUM(SCHEDULED_QUANTITY) AS plan_qty
+            FROM aps_main_plan
+            WHERE URGENCY_LEVEL IS NOT NULL
+            GROUP BY production_order_no, production_workshop, TRUNC(SCHEDULED_DATE)
+        ),
+        urgent_order_workshop AS (
+            SELECT DISTINCT order_no, workshop
+            FROM urgent_main_plan
+        ),
+        trans_urgent AS (
+            SELECT t.order_no, ow.workshop, t.trans_date, t.trans_qty
+            FROM trans_raw t
+            JOIN urgent_order_workshop ow ON t.order_no = ow.order_no
+        ),
+        total_trans_urgent AS (
+            SELECT order_no, workshop, SUM(trans_qty) AS total_qty
+            FROM trans_urgent
+            GROUP BY order_no, workshop
+        ),
+        plan_detail_urgent AS (
+            SELECT p.order_no, p.workshop, p.plan_date, p.plan_qty,
+                   NVL(t.trans_qty, 0) AS trans_qty,
+                   SUM(p.plan_qty) OVER (PARTITION BY p.order_no, p.workshop ORDER BY p.plan_date) AS cum_plan,
+                   SUM(NVL(t.trans_qty, 0)) OVER (PARTITION BY p.order_no, p.workshop ORDER BY p.plan_date) AS cum_trans,
+                   SUM(p.plan_qty) OVER (PARTITION BY p.order_no, p.workshop ORDER BY p.plan_date
+                       ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_cum_plan
+            FROM urgent_main_plan p
+            LEFT JOIN trans_urgent t ON p.order_no = t.order_no AND p.workshop = t.workshop AND p.plan_date = t.trans_date
+        ),
+        urgent_daily_agg AS (
+            SELECT 
+                d.plan_date, d.workshop,
+                SUM(d.plan_qty) AS urgent_plan_qty,
+                SUM(
+                    CASE 
+                        WHEN d.plan_qty > 0 THEN
+                            LEAST(
+                                GREATEST(0, d.trans_qty - GREATEST(COALESCE(d.prev_cum_plan,0) - (d.cum_trans - d.trans_qty), 0)),
+                                GREATEST(0, tt.total_qty - COALESCE(d.prev_cum_plan,0)),
+                                d.plan_qty
+                            )
+                        ELSE 0
+                    END
+                ) AS urgent_planned_completion
+            FROM plan_detail_urgent d
+            LEFT JOIN total_trans_urgent tt ON d.order_no = tt.order_no AND d.workshop = tt.workshop
+            WHERE d.plan_qty > 0
+            GROUP BY d.plan_date, d.workshop
+        ),
+        all_dates_workshops AS (
+            SELECT plan_date, workshop FROM daily_agg_assy
+            UNION
+            SELECT plan_date, workshop FROM daily_agg_main
+            UNION
+            SELECT plan_date, workshop FROM urgent_daily_agg
+        ),
+        urgent_unfinished AS (
+            SELECT 
+                plan_date, workshop,
+                GREATEST(
+                    SUM(urgent_plan_qty) OVER (PARTITION BY workshop ORDER BY plan_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+                    - SUM(urgent_planned_completion) OVER (PARTITION BY workshop ORDER BY plan_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW),
+                    0
+                ) AS urgent_unfinished_qty
+            FROM urgent_daily_agg
+        )
+        SELECT 
+            ad.plan_date,
+            ad.workshop,
+            NVL(da.daily_plan_qty, 0) AS daily_plan_qty,
+            NVL(da.daily_actual_qty, 0) AS daily_actual_qty,
+            NVL(da.planned_completion, 0) AS planned_completion,
+            ROUND(NVL(da.planned_completion, 0) / NULLIF(NVL(da.daily_plan_qty, 0), 0) * 100, 2) AS planned_completion_rate,
+            SUM(NVL(da.daily_actual_qty, 0)) OVER (PARTITION BY ad.workshop ORDER BY ad.plan_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cum_completion_qty,
+            NVL(da.delayed_completion, 0) AS delayed_completion,
+            NVL(da.unfinished_qty, 0) AS unfinished_qty,
+            SUM(NVL(da.unfinished_qty, 0)) OVER (PARTITION BY ad.workshop ORDER BY ad.plan_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cum_unfinished_qty,
+            NVL(dm.main_plan_qty, 0) AS main_plan_qty,
+            NVL(dm.main_planned_completion, 0) AS main_planned_completion,
+            ROUND(NVL(dm.main_planned_completion, 0) / NULLIF(NVL(dm.main_plan_qty, 0), 0) * 100, 2) AS main_planned_completion_rate,
+            NVL(ug.urgent_unfinished_qty, 0) AS urgent_unfinished_qty
+        FROM all_dates_workshops ad
+        LEFT JOIN daily_agg_assy da ON ad.plan_date = da.plan_date AND ad.workshop = da.workshop
+        LEFT JOIN daily_agg_main dm ON ad.plan_date = dm.plan_date AND ad.workshop = dm.workshop
+        LEFT JOIN urgent_unfinished ug ON ad.plan_date = ug.plan_date AND ad.workshop = ug.workshop
+        <where>
+            <if test="beginPlanDate != null">AND ad.plan_date >= #{beginPlanDate}</if>
+            <if test="endPlanDate != null">AND ad.plan_date <![CDATA[ <= ]]> #{endPlanDate}</if>
+            <if test="workshop != null and workshop != ''">AND ad.workshop = #{workshop}</if>
+        </where>
+    </sql>
+
+    <!-- 查询总数 -->
+    <select id="selectCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM (
+            <include refid="reportSql"/>
+        ) t
+    </select>
+
+    <!-- 分页查询 -->
+    <select id="selectPage" resultType="cn.iocoder.yudao.module.aps.controller.admin.plancompletionreport.vo.PlanCompletionReportRespVO">
+        SELECT *
+        FROM (
+            SELECT t.*, ROWNUM AS rn
+            FROM (
+                <include refid="reportSql"/>
+                ORDER BY plan_date, workshop
+            ) t
+            WHERE ROWNUM <![CDATA[ <= ]]> #{offset} + #{pageSize}
+        ) tmp
+        WHERE tmp.rn <![CDATA[ > ]]> #{offset}
+    </select>
+</mapper>

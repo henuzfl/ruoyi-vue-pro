@@ -6,8 +6,11 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
 import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
 import cn.iocoder.yudao.module.aps.dal.dataobject.bomimport.BomImportDO;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import cn.iocoder.yudao.module.aps.controller.admin.bomimport.vo.*;
+import org.apache.ibatis.annotations.Param;
+
 
 /**
  * 物料BOM导入 Mapper
@@ -42,4 +45,10 @@ public interface BomImportMapper extends BaseMapperX<BomImportDO> {
                 .orderByDesc(BomImportDO::getId));
     }
 
+    /**
+     * 物理删除指定物料+工厂的BOM导入数据
+     */
+    @Delete("DELETE FROM material_bom_import WHERE MAIN_MATERIAL_NO = #{mainMaterialNo} AND PLANT = #{plant}")
+    int physicalDeleteByMaterialAndPlant(@Param("mainMaterialNo") String mainMaterialNo,
+                                         @Param("plant") String plant);
 }

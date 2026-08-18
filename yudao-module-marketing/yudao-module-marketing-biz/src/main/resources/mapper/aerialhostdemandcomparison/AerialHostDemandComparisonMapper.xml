@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.marketing.dal.mysql.aerialhostdemandcomparison.AerialHostDemandComparisonMapper">
+
+    <sql id="coreQuery">
+        WITH current_data AS (
+            SELECT 
+                b.material_code,
+                MAX(c.teli_code) AS teli_code,
+                MAX(b.material_desc) AS material_desc,
+                MAX(a.product_model) AS product_model,
+                a.online_plan,
+                SUM(a.unit_count) AS qty_current
+            FROM marketing_aerial_boom_dplan a
+            LEFT JOIN marketing_aerial_boom_bom b ON a.precise_bom = b.precise_bom
+            LEFT JOIN buyer_code_config c ON b.material_code = c.host_code
+            WHERE a.online_plan IS NOT NULL
+              AND a.import_time = TO_DATE(#{currentDate}, 'YYYY-MM-DD')
+                <if test="plate != null and plate != ''">
+                    AND a.plate = #{plate}
+                </if>
+            GROUP BY b.material_code, a.online_plan
+        ),
+        compare_data AS (
+            SELECT 
+                b.material_code,
+                a.online_plan,
+                SUM(a.unit_count) AS qty_compare
+            FROM marketing_aerial_boom_dplan a
+            LEFT JOIN marketing_aerial_boom_bom b ON a.precise_bom = b.precise_bom
+            WHERE a.online_plan IS NOT NULL
+              AND a.import_time = TO_DATE(#{compareDate}, 'YYYY-MM-DD')
+                <if test="plate != null and plate != ''">
+                    AND a.plate = #{plate}
+                </if>
+            GROUP BY b.material_code, a.online_plan
+        ),
+        all_materials AS (
+            SELECT material_code FROM current_data
+            UNION
+            SELECT material_code FROM compare_data
+        ),
+        material_info AS (
+            SELECT 
+                m.material_code,
+                (SELECT MAX(c.teli_code) FROM buyer_code_config c WHERE c.host_code = m.material_code) AS teli_code,
+                (SELECT MAX(b.material_desc) FROM marketing_aerial_boom_bom b WHERE b.material_code = m.material_code) AS material_desc,
+                (SELECT MAX(b.product_model) FROM marketing_aerial_boom_bom b WHERE b.material_code = m.material_code) AS product_model
+            FROM all_materials m
+        ),
+        all_dates AS (
+            SELECT online_plan FROM current_data
+            UNION
+            SELECT online_plan FROM compare_data
+        ),
+        ordered_dates AS (
+            SELECT online_plan, ROW_NUMBER() OVER (ORDER BY online_plan) AS rn
+            FROM all_dates
+        )
+        SELECT 
+            mi.material_code,
+            mi.teli_code,
+            mi.material_desc,
+            mi.product_model,
+            od.online_plan,
+            COALESCE(cd.qty_current, 0) AS current_qty,
+            COALESCE(cmp.qty_compare, 0) AS compare_qty,
+            COALESCE(cd.qty_current, 0) - COALESCE(cmp.qty_compare, 0) AS diff_qty
+        FROM material_info mi
+        CROSS JOIN ordered_dates od
+        LEFT JOIN current_data cd ON cd.material_code = mi.material_code AND cd.online_plan = od.online_plan
+        LEFT JOIN compare_data cmp ON cmp.material_code = mi.material_code AND cmp.online_plan = od.online_plan
+        <where>
+            <if test="materialCode != null and materialCode != ''">
+                AND mi.material_code LIKE '%' || #{materialCode} || '%'
+            </if>
+            <if test="productModel != null and productModel != ''">
+                AND mi.product_model LIKE '%' || #{productModel} || '%'
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectComparisonPage" resultType="cn.iocoder.yudao.module.marketing.controller.admin.aerialhostdemandcomparison.vo.AerialHostDemandComparisonRespVO">
+        SELECT * FROM (
+            SELECT t.*, ROWNUM AS rn FROM (
+                <include refid="coreQuery" />
+                ORDER BY mi.material_code, od.rn
+            ) t
+            WHERE ROWNUM <![CDATA[ <= ]]> (#{pageNo} * #{pageSize})
+        ) t2
+        WHERE t2.rn <![CDATA[ > ]]> ((#{pageNo} - 1) * #{pageSize})
+    </select>
+
+    <select id="selectComparisonCount" resultType="long">
+        SELECT COUNT(*) FROM (
+            <include refid="coreQuery" />
+        )
+    </select>
+
+    <select id="selectAllForExport" resultType="cn.iocoder.yudao.module.marketing.controller.admin.aerialhostdemandcomparison.vo.AerialHostDemandComparisonRespVO">
+        <include refid="coreQuery" />
+        ORDER BY mi.material_code, od.rn
+    </select>
+
+    <select id="selectDayComparison" resultType="cn.iocoder.yudao.module.marketing.controller.admin.aerialhostdemandcomparison.vo.AerialHostDemandComparisonRespVO">
+        <include refid="coreQuery" />
+        ORDER BY mi.material_code, od.online_plan
+    </select>
+
+    <sql id="coreWeekQuery">
+        WITH current_data AS (
+        SELECT
+        b.material_code,
+        MAX(c.teli_code) AS teli_code,
+        MAX(b.material_desc) AS material_desc,
+        MAX(a.product_model) AS product_model,
+        TO_CHAR(a.online_plan, 'YYYY-IW') AS week_key,
+        MIN(a.online_plan) AS week_start,
+        MAX(a.online_plan) AS week_end,
+        SUM(a.unit_count) AS qty_current
+        FROM marketing_aerial_boom_dplan a
+        LEFT JOIN marketing_aerial_boom_bom b ON a.precise_bom = b.precise_bom
+        LEFT JOIN buyer_code_config c ON b.material_code = c.host_code
+        WHERE a.online_plan IS NOT NULL
+        AND a.import_time = TO_DATE(#{currentDate}, 'YYYY-MM-DD')
+        <if test="plate != null and plate != ''">
+            AND a.plate = #{plate}
+        </if>
+        GROUP BY b.material_code, TO_CHAR(a.online_plan, 'YYYY-IW')
+        ),
+        compare_data AS (
+        SELECT
+        b.material_code,
+        TO_CHAR(a.online_plan, 'YYYY-IW') AS week_key,
+        SUM(a.unit_count) AS qty_compare
+        FROM marketing_aerial_boom_dplan a
+        LEFT JOIN marketing_aerial_boom_bom b ON a.precise_bom = b.precise_bom
+        WHERE a.online_plan IS NOT NULL
+        AND a.import_time = TO_DATE(#{compareDate}, 'YYYY-MM-DD')
+        <if test="plate != null and plate != ''">
+            AND a.plate = #{plate}
+        </if>
+        GROUP BY b.material_code, TO_CHAR(a.online_plan, 'YYYY-IW')
+        ),
+        all_materials AS (
+        SELECT material_code FROM current_data
+        UNION
+        SELECT material_code FROM compare_data
+        ),
+        material_info AS (
+        SELECT
+        m.material_code,
+        (SELECT MAX(c.teli_code) FROM buyer_code_config c WHERE c.host_code = m.material_code) AS teli_code,
+        (SELECT MAX(b.material_desc) FROM marketing_aerial_boom_bom b WHERE b.material_code = m.material_code) AS material_desc,
+        (SELECT MAX(b.product_model) FROM marketing_aerial_boom_bom b WHERE b.material_code = m.material_code) AS product_model
+        FROM all_materials m
+        ),
+        all_weeks AS (
+        SELECT week_key, MIN(week_start) AS week_start, MAX(week_end) AS week_end
+        FROM (SELECT week_key, week_start, week_end FROM current_data UNION SELECT week_key, NULL, NULL FROM compare_data)
+        GROUP BY week_key
+        ),
+        ordered_weeks AS (
+        SELECT week_key, week_start, week_end, ROW_NUMBER() OVER (ORDER BY MIN(week_start)) AS rn
+        FROM all_weeks
+        GROUP BY week_key, week_start, week_end
+        )
+        SELECT
+        mi.material_code,
+        mi.teli_code,
+        mi.material_desc,
+        mi.product_model,
+        ow.week_key AS weekKey,
+        TO_CHAR(ow.week_start, 'YYYY-MM-DD') AS weekStartDate,
+        TO_CHAR(ow.week_end, 'YYYY-MM-DD') AS weekEndDate,
+        COALESCE(cd.qty_current, 0) AS currentQty,
+        COALESCE(cmp.qty_compare, 0) AS compareQty,
+        COALESCE(cd.qty_current, 0) - COALESCE(cmp.qty_compare, 0) AS diffQty
+        FROM material_info mi
+        CROSS JOIN ordered_weeks ow
+        LEFT JOIN current_data cd ON cd.material_code = mi.material_code AND cd.week_key = ow.week_key
+        LEFT JOIN compare_data cmp ON cmp.material_code = mi.material_code AND cmp.week_key = ow.week_key
+        <where>
+            <if test="materialCode != null and materialCode != ''">
+                AND mi.material_code LIKE '%' || #{materialCode} || '%'
+            </if>
+            <if test="productModel != null and productModel != ''">
+                AND mi.product_model LIKE '%' || #{productModel} || '%'
+            </if>
+        </where>
+        ORDER BY mi.material_code, ow.rn
+    </sql>
+
+    <select id="selectWeekComparison" resultType="cn.iocoder.yudao.module.marketing.controller.admin.aerialhostdemandcomparison.vo.AerialHostDemandComparisonWeekRespVO">
+        <include refid="coreWeekQuery" />
+    </select>
+</mapper>

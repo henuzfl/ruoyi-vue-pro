@@ -7,6 +7,7 @@ import cn.iocoder.yudao.module.wm.controller.admin.kittingmaster.vo.*;
 import cn.iocoder.yudao.module.wm.dal.dataobject.kittingmaster.KittingMasterDO;
 import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.pojo.PageParam;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 
 /**
  * 主计划 Service 接口
@@ -32,5 +33,28 @@ public interface KittingMasterService {
      * @return 主计划分页
      */
     PageResult<KittingMasterDO> selectKittingMasterByParams(KittingMasterPageReqVO pageReqVO);
+    /**
+     * 获得主计划导出数据
+     *
+     * @param exportReqVO 导出查询条件
+     * @return 主计划列表
+     */
+    List<KittingMasterDO> selectKittingMasterForExport(KittingMasterPageReqVO exportReqVO);
 
+    /**
+     * 执行齐套
+     *
+     * @param
+     * @return 执行齐套
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    void callUpdatecompProcedure();
+
+    /**
+     * 获得主计划分页
+     *
+     * @param pageReqVO 分页查询
+     * @return 主计划分页
+     */
+    PageResult<KittingMasterDO> selectKittingcalculateByParams(KittingMasterPageReqVO pageReqVO);
 }

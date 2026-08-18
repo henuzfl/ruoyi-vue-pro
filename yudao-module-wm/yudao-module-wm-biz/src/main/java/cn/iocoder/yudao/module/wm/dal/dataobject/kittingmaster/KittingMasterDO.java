@@ -1,5 +1,7 @@
 package cn.iocoder.yudao.module.wm.dal.dataobject.kittingmaster;
 
+import com.alibaba.excel.annotation.ExcelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import java.util.*;
 import java.math.BigDecimal;
@@ -46,12 +48,11 @@ public class KittingMasterDO extends BaseDO {
     /**
      * 是否齐套
      */
-    private String kittingStatus;
-
+    private String assemblyKittingStatus;
     /**
      * 是否齐套
      */
-    private String assemblyKittingStatus;
+    private String kittingStatus;  // 或其它类型，根据业务确定
 
     /**
      * 生产车间
@@ -64,48 +65,18 @@ public class KittingMasterDO extends BaseDO {
     private Integer scheduledQuantity;
 
     /**
-     * 组件物料号
+     * 是否全部出库
      */
-    private String componentMaterialNo;
+    private String openFlag;
 
-    /**
-     * 组件物料名称
+    /*
+    订单类型
      */
-    private String componentDesc;
+    private String orderMessage;
 
-    /**
-     * 单件物料数量
+    /*
+    父订单
      */
-    private Double unitUsage;
-
-    /**
-     * 所需组件数量
-     */
-    private Double requiredQty;
-
-    /**
-     * 明天库存
-     */
-    private Double stockTomorrow;
-
-    /**
-     * 后天库存
-     */
-    private Double stockDayAfterTomorrow;
-
-    /**
-     * 第三天库存
-     */
-    private Double stockThirdDay;
-
-    /**
-     * 总库存数量
-     */
-    private Double stockQuantity;
-
-    /**
-     * 差额
-     */
-    private Double shortageQty;
+    private String parentOrderNo;
 
 }

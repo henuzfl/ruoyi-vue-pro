@@ -21,4 +21,11 @@ public interface MaterialKittingToolMapper {
      */
     @InterceptorIgnore(tenantLine = "true")
     List<MaterialKittingToolDO> selectMaterialKittingToolByParams(@Param("params") MaterialKittingToolPageReqVO params);
+
+    /**
+     * 根据参数查询齐套分析数据
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    List<MaterialKittingToolDO> selectCalculateKittingToolByParams(@Param("params") MaterialKittingToolPageReqVO params);
+
 }

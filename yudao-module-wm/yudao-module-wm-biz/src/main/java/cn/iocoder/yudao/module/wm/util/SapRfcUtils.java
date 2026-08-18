@@ -24,9 +24,55 @@ public class SapRfcUtils {
     private static final Logger log = LoggerFactory.getLogger(SapRfcUtils.class);
     private static final String DESTINATION_NAME = "SAP_RUOYI_DEST";
     private static volatile boolean providerRegistered = false;
+    private static volatile boolean initialized = false;  // 新增：懒加载标志
 
     @Autowired
     private ISapConfigService sapConfigService;
+
+    // 懒加载初始化方法（加锁保证线程安全）
+    private synchronized void lazyInit() {
+        if (initialized) {
+            return;
+        }
+        log.info("SapRfcUtils 懒加载初始化开始...");
+        try {
+            // 1. 创建自定义Provider
+            CustomDestinationDataProvider provider = new CustomDestinationDataProvider();
+
+            // 2. 获取连接属性（此时才去读取数据库配置）
+            Properties logonProps = getLogonProps();
+
+            // 3. 添加目的地配置
+            provider.addDestination(DESTINATION_NAME, logonProps);
+
+            // 4. 注册到JCO环境（仅一次）
+            if (!providerRegistered) {
+                Environment.registerDestinationDataProvider(provider);
+                providerRegistered = true;
+            }
+
+            // 5. 测试连接 - 直接使用已注册的 destination
+            try {
+                JCoDestination destination = JCoDestinationManager.getDestination(DESTINATION_NAME);
+                destination.ping();
+                log.info("SAP连接测试成功");
+            } catch (JCoException e) {
+                //log.warn("SAP连接测试失败: {}", e.getMessage());
+                // 可以选择抛出异常或记录错误，视业务需求
+                // 打印完整的错误细节
+                log.error("SAP连接测试失败 - 错误码: {} 错误组: {} 消息: {}",
+                        e.getKey(), e.getGroup(), e.getMessage());
+                // 可选：将异常栈打印出来
+                log.error("详细异常栈: ", e);
+            }
+
+            initialized = true;
+            log.info("SAP JCO 懒加载初始化完成");
+        } catch (Exception e) {
+            log.error("SAP JCO 懒加载初始化失败", e);
+            throw new RuntimeException("SAP JCO 初始化失败: " + e.getMessage(), e);
+        }
+    }
 
     /* ========== 第一部分：自定义DestinationDataProvider实现 ========== */
 
@@ -63,7 +109,7 @@ public class SapRfcUtils {
     /* ========== 第二部分：连接管理 ========== */
 
     /**
-     * 获取连接属性
+     * 获取连接属性_正式环境
      */
     public Properties getLogonProps() {
         Properties props = new Properties();
@@ -87,20 +133,65 @@ public class SapRfcUtils {
 
         return props;
     }
-
+    /**
+     * 获取连接属性_qas环境
+     */
+//    public Properties getLogonProps() {
+//        Properties props = new Properties();
+//
+//        String ashost = sapConfigService.getBaseCodeByType("_JCO_CLIENT_QAS_ASHOST_");
+//        String client = sapConfigService.getBaseCodeByType("_JCO_CLIENT_QAS_CLIENT_");
+//        String user = sapConfigService.getBaseCodeByType("_JCO_CLIENT_QAS_USER_");
+//        String rawPassword = sapConfigService.getBaseCodeByType("_JCO_CLIENT_QAS_PASSWD_");
+//
+//
+//        props.setProperty("jco.client.ashost", ashost);
+//        props.setProperty("jco.client.sysnr",  "00");
+//        props.setProperty("jco.client.client", client);
+//        props.setProperty("jco.client.user",   user);
+//        props.setProperty("jco.client.passwd", rawPassword);
+//        props.setProperty("jco.client.lang",   "ZH");
+//
+//        // 可选：强制设置代码页
+//        // props.setProperty("jco.client.codepage", "1100");
+//
+//        props.setProperty("jco.destination.pool_capacity", "10");
+//        props.setProperty("jco.destination.max_get_client_time", "10000");
+//
+//        return props;
+//    }
     /**
      * 获取JCO目的地
      */
     public JCoDestination getDestination() throws JCoException {
+        if (!initialized) {
+            lazyInit();  // 第一次调用时初始化
+        }
         return JCoDestinationManager.getDestination(DESTINATION_NAME);
     }
 
     /**
      * 测试连接
      */
+//    public boolean testConnection() {
+//        try {
+//            JCoDestination destination = getDestination();
+//            destination.ping();
+//            log.info("SAP连接测试成功");
+//            return true;
+//        } catch (JCoException e) {
+//            log.error("SAP连接测试失败: {}", e.getMessage());
+//            return false;
+//        }
+//    }
+    // 测试连接方法 - 不再调用 getDestination()
     public boolean testConnection() {
+        if (!initialized) {
+            log.warn("SAP连接尚未初始化，无法测试连接");
+            return false;
+        }
         try {
-            JCoDestination destination = getDestination();
+            JCoDestination destination = JCoDestinationManager.getDestination(DESTINATION_NAME);
             destination.ping();
             log.info("SAP连接测试成功");
             return true;
@@ -296,7 +387,9 @@ public class SapRfcUtils {
     /**
      * 初始化时注册自定义的DestinationDataProvider
      */
-    @PostConstruct
+    /*
+     @PostConstruct
+     */
     public void init() {
         log.info("SapRfcUtils (JCO 3.0) 初始化...");
 
@@ -336,6 +429,9 @@ public class SapRfcUtils {
             }
         }
     }
+
+
+
 
     /**
      * 销毁时清理资源

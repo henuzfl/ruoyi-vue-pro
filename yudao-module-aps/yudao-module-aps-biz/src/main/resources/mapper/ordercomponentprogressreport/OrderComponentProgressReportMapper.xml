@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.aps.dal.mysql.ordercomponentprogressreport.OrderComponentProgressReportMapper">
+
+    <sql id="baseQuery">
+        SELECT
+        s.PRODUCTION_ORDER_NO AS productionOrderNo,
+        s.ASSEMBLY_MATERIAL_NO as assemblyMaterialNo,
+        b.COMPONENT_MATERIAL_NO AS componentMaterialNo,
+        e.MATERIAL_DESC AS materialDesc,
+        s.SCHEDULED_QUANTITY AS orderQuantity,
+        b.UNIT_USAGE AS unitUsage,
+        s.SCHEDULED_QUANTITY * b.UNIT_USAGE AS totalRequirement,
+        f.STOCK_QUANTITY AS stockQuantity,
+        g.orderQuantity AS workInProgress,
+        h.openPoQuantity AS openPoQuantity,
+        s.SCHEDULED_DATE AS scheduledDate,
+        s.BASIC_END_DATE AS basicEndDate,
+        s.PRODUCTION_WORKSHOP AS productionWorkshop,
+        e.PROCUREMENT_TYPE AS procurementType
+        FROM SUB_ORDER s
+        LEFT JOIN material_bom_import b ON s.ASSEMBLY_MATERIAL_NO = b.MAIN_MATERIAL_NO
+        LEFT JOIN material_master_import e ON b.COMPONENT_MATERIAL_NO = e.MATERIAL_NO
+        LEFT JOIN (
+        SELECT MATERIAL_NO, SUM(STOCK_QUANTITY) AS STOCK_QUANTITY
+        FROM real_time_stock
+        GROUP BY MATERIAL_NO
+        ) f ON b.COMPONENT_MATERIAL_NO = f.MATERIAL_NO
+        LEFT JOIN (
+        SELECT ASSEMBLY_MATERIAL_NO, SUM(SCHEDULED_QUANTITY - DELIVERED_QUANTITY) AS orderQuantity
+        FROM SUB_ORDER
+        WHERE SYSTEM_STATUS LIKE 'CRTD%' OR SYSTEM_STATUS LIKE 'REL%'
+        GROUP BY ASSEMBLY_MATERIAL_NO
+        ) g ON g.ASSEMBLY_MATERIAL_NO = b.COMPONENT_MATERIAL_NO
+        LEFT JOIN (
+        SELECT MATERIAL_NO, SUM(ORDER_QTY - RECEIVED_QTY) AS openPoQuantity
+        FROM BUYER_OPEN_ORDER
+        GROUP BY MATERIAL_NO
+        ) h ON h.MATERIAL_NO = b.COMPONENT_MATERIAL_NO
+        WHERE s.DELETED = 0
+        AND b.COMPONENT_MATERIAL_NO IS NOT NULL
+        <if test="reqVO.productionOrderNo != null and reqVO.productionOrderNo != ''">
+            AND s.PRODUCTION_ORDER_NO = #{reqVO.productionOrderNo}
+        </if>
+        <if test="reqVO.componentMaterialNo != null and reqVO.componentMaterialNo != ''">
+            AND b.COMPONENT_MATERIAL_NO = #{reqVO.componentMaterialNo}
+        </if>
+        <if test="reqVO.materialDesc != null and reqVO.materialDesc != ''">
+            AND e.MATERIAL_DESC LIKE '%' || #{reqVO.materialDesc} || '%'
+        </if>
+        <if test="reqVO.productionWorkshop != null and reqVO.productionWorkshop != ''">
+            AND s.PRODUCTION_WORKSHOP = #{reqVO.productionWorkshop}
+        </if>
+        <if test="reqVO.scheduledDateStart != null">
+            AND s.SCHEDULED_DATE >= #{reqVO.scheduledDateStart}
+        </if>
+        <if test="reqVO.scheduledDateEnd != null">
+            AND s.SCHEDULED_DATE &lt;= #{reqVO.scheduledDateEnd}
+        </if>
+        <if test="reqVO.basicEndDateStart != null">
+            AND s.BASIC_END_DATE >= #{reqVO.basicEndDateStart}
+        </if>
+        <if test="reqVO.basicEndDateEnd != null">
+            AND s.BASIC_END_DATE &lt;= #{reqVO.basicEndDateEnd}
+        </if>
+        ORDER BY b.COMPONENT_MATERIAL_NO, s.SCHEDULED_DATE, s.SCHEDULED_QUANTITY
+    </sql>
+
+    <select id="selectPage" resultType="cn.iocoder.yudao.module.aps.controller.admin.ordercomponentprogressreport.vo.OrderComponentProgressReportRespVO">
+        SELECT * FROM (
+        SELECT t.*, ROWNUM AS rn FROM (
+        <include refid="baseQuery" />
+        ) t
+        WHERE ROWNUM <![CDATA[ <= ]]> (#{pageNo} * #{pageSize})
+        ) t2
+        WHERE t2.rn <![CDATA[ > ]]> ((#{pageNo} - 1) * #{pageSize})
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*)
+        FROM (
+        SELECT s.PRODUCTION_ORDER_NO
+        FROM SUB_ORDER s
+        LEFT JOIN material_bom_import b ON s.ASSEMBLY_MATERIAL_NO = b.MAIN_MATERIAL_NO
+        LEFT JOIN material_master_import e ON b.COMPONENT_MATERIAL_NO = e.MATERIAL_NO
+        WHERE s.DELETED = 0
+        AND b.COMPONENT_MATERIAL_NO IS NOT NULL
+        <include refid="whereCondition" />
+        ) t
+    </select>
+
+    <select id="selectAllByCondition" resultType="cn.iocoder.yudao.module.aps.controller.admin.ordercomponentprogressreport.vo.OrderComponentProgressReportRespVO">
+        <include refid="baseQuery" />
+    </select>
+
+    <sql id="whereCondition">
+        <if test="reqVO.productionOrderNo != null and reqVO.productionOrderNo != ''">
+            AND s.PRODUCTION_ORDER_NO = #{reqVO.productionOrderNo}
+        </if>
+        <if test="reqVO.componentMaterialNo != null and reqVO.componentMaterialNo != ''">
+            AND b.COMPONENT_MATERIAL_NO = #{reqVO.componentMaterialNo}
+        </if>
+        <if test="reqVO.materialDesc != null and reqVO.materialDesc != ''">
+            AND e.MATERIAL_DESC LIKE '%' || #{reqVO.materialDesc} || '%'
+        </if>
+        <if test="reqVO.productionWorkshop != null and reqVO.productionWorkshop != ''">
+            AND s.PRODUCTION_WORKSHOP = #{reqVO.productionWorkshop}
+        </if>
+        <if test="reqVO.scheduledDateStart != null">
+            AND s.SCHEDULED_DATE >= #{reqVO.scheduledDateStart}
+        </if>
+        <if test="reqVO.scheduledDateEnd != null">
+            AND s.SCHEDULED_DATE &lt;= #{reqVO.scheduledDateEnd}
+        </if>
+        <if test="reqVO.basicEndDateStart != null">
+            AND s.BASIC_END_DATE >= #{reqVO.basicEndDateStart}
+        </if>
+        <if test="reqVO.basicEndDateEnd != null">
+            AND s.BASIC_END_DATE &lt;= #{reqVO.basicEndDateEnd}
+        </if>
+    </sql>
+
+</mapper>

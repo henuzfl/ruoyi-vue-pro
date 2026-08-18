@@ -1,0 +1,575 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.buyer.dal.mysql.hostrequirementcomparison.HostRequirementComparisonMapper">
+
+
+        <sql id="coreQuery">
+            WITH
+            -- 为 BUYER_VEHICLE_PLAN 添加上一版本的相关字段
+            b_data AS (
+            SELECT b.*,
+            LAG(b.BOOM_TOP_BOTTOM_PLAN_DATE)
+            OVER (PARTITION BY b.PRODUCT_MODEL, b.BARE_MACHINE_ORDER_NO ORDER BY b.IMPORT_DATE)
+            AS prev_boom_top_bottom_plan_date,
+            LAG(b.TURNTABLE_PLAN_DATE)
+            OVER (PARTITION BY b.PRODUCT_MODEL, b.BARE_MACHINE_ORDER_NO ORDER BY b.IMPORT_DATE)
+            AS prev_turntable_date,
+            LAG(b.FINISHED_PRODUCT_PLAN_DATE)
+            OVER (PARTITION BY b.PRODUCT_MODEL, b.BARE_MACHINE_ORDER_NO ORDER BY b.IMPORT_DATE)
+            AS prev_finished_product_date,
+            LAG(b.CREATE_TIME)
+            OVER (PARTITION BY b.PRODUCT_MODEL, b.BARE_MACHINE_ORDER_NO ORDER BY b.IMPORT_DATE)
+            AS prev_create_time
+            FROM BUYER_VEHICLE_PLAN b
+            where IMPORT_DATE IN (TO_DATE(#{currentDate}, 'YYYY-MM-DD'),TO_DATE(#{compareDate}, 'YYYY-MM-DD'))
+            ),
+            -- 为 buyer_vehicle_config 添加上一版本的 quota1
+            c_data AS (
+            SELECT c.*,
+            p.quota2
+            AS prev_quota1
+            FROM (SELECT max(order_no) as order_no, vehicle_model, seq_no_2026, max(required_arrival_time) as required_arrival_time, material_desc, max(quota1) as quota1, quota2, max(material_no) as material_no, factory, import_date,SUM(required_quantity) AS required_quantity, sum(delivered_quantity) AS delivered_quantity
+            FROM buyer_vehicle_config group by vehicle_model, seq_no_2026, material_desc, quota2, factory, import_date) c
+            LEFT JOIN (SELECT max(order_no) as order_no, vehicle_model, seq_no_2026, max(required_arrival_time) as required_arrival_time, material_desc, max(quota1) as quota1, quota2, max(material_no) as material_no, factory, import_date,SUM(required_quantity) AS required_quantity, sum(delivered_quantity) AS delivered_quantity
+            FROM buyer_vehicle_config group by vehicle_model, seq_no_2026, material_desc, quota2, factory, import_date) p on
+            c.VEHICLE_MODEL = p.VEHICLE_MODEL
+            and c.MATERIAL_DESC = p.MATERIAL_DESC
+            and c.SEQ_NO_2026 = p.SEQ_NO_2026
+            AND c.quota2 = p.quota2
+            and c.factory =p.factory
+            and p.IMPORT_DATE = TO_DATE(#{compareDate}, 'YYYY-MM-DD')
+            WHERE c.IMPORT_DATE = TO_DATE(#{currentDate}, 'YYYY-MM-DD')
+            ),
+            -- 每个型号下，取最新导入配置中按数字部分排序最大的 SEQ_NO_2026 的行（用于回退）
+            c_model_latest AS (
+            SELECT *
+            FROM (
+            SELECT cd.*,
+            DENSE_RANK() OVER (
+            PARTITION BY cd.VEHICLE_MODEL
+            ORDER BY TO_NUMBER(REGEXP_SUBSTR(cd.SEQ_NO_2026, '^[0-9]+')) DESC NULLS LAST,TO_NUMBER(REGEXP_SUBSTR(cd.SEQ_NO_2026, '[0-9]+', 1, 2)) DESC NULLS LAST
+            ) AS dr
+            FROM c_data cd
+            ) t
+            WHERE t.dr = 1
+            )
+            select * from (
+            -- 第一部分：精确匹配成功的数据
+            SELECT
+            -- 日期字段（同原逻辑）
+            CASE
+            WHEN b.BOOM_TOP_BOTTOM_PLAN_DATE IS NOT NULL
+            AND b.BOOM_TOP_BOTTOM_PLAN_DATE != '/'
+            -- AND REGEXP_LIKE(b.BOOM_TOP_BOTTOM_PLAN_DATE, '^\d{4}/\d{1,2}/\d{1,2}$')
+            THEN b.BOOM_TOP_BOTTOM_PLAN_DATE
+            WHEN b.TURNTABLE_PLAN_DATE IS NOT NULL
+            AND b.TURNTABLE_PLAN_DATE != '/'
+            -- AND REGEXP_LIKE(b.TURNTABLE_PLAN_DATE, '^\d{4}/\d{1,2}/\d{1,2}$')
+            THEN b.TURNTABLE_PLAN_DATE
+            WHEN b.FINISHED_PRODUCT_PLAN_DATE IS NOT NULL
+            THEN TO_CHAR(b.FINISHED_PRODUCT_PLAN_DATE, 'YYYY/MM/DD')
+            ELSE TO_CHAR(b.CREATE_TIME, 'YYYY/MM/DD')
+            END AS chassisOnlinePlanDate,
+
+            CASE
+            WHEN b.prev_boom_top_bottom_plan_date IS NOT NULL
+            AND b.prev_boom_top_bottom_plan_date != '/'
+            -- AND REGEXP_LIKE(b.prev_boom_top_bottom_plan_date, '^\d{4}/\d{1,2}/\d{1,2}$')
+            THEN b.prev_boom_top_bottom_plan_date
+            WHEN b.prev_turntable_date IS NOT NULL
+            AND b.prev_turntable_date != '/'
+            -- AND REGEXP_LIKE(b.prev_turntable_date, '^\d{4}/\d{1,2}/\d{1,2}$')
+            THEN b.prev_turntable_date
+            WHEN b.prev_finished_product_date IS NOT NULL
+            THEN TO_CHAR(b.prev_finished_product_date, 'YYYY/MM/DD')
+            ELSE TO_CHAR(b.prev_create_time, 'YYYY/MM/DD')
+            END AS versionDate,
+
+            b.PRODUCT_MODEL AS productModel,
+            b.SEQ_NO2026 AS productionOrder,
+            b.BARE_MACHINE_ORDER_NO AS bareMachineOrderNo,
+            b.DRIVING_UNIT_ORDER_NO AS drivingUnitOrderNo,
+            -- 使用精确匹配的字段
+            c.prev_quota1 AS quota1,
+            c.QUOTA2 AS quota2,
+            b.UNIT_QUANTITY AS unitQuantity,
+            c.material_desc AS materialNo,
+            c.material_No AS cylinderName,
+            e.TELI_CODE AS teliCode,
+            c.REQUIRED_QUANTITY AS config,
+            b.UNIT_QUANTITY * c.REQUIRED_QUANTITY AS requiredQuantity,
+            NULL AS pickingDate,
+            NULL AS pickedQuantity,
+            NULL AS closedStatus,
+            NULL AS category,
+            NULL AS hostPlanReleaseTime,
+            0 AS fallbackMatched
+            FROM b_data b
+            INNER JOIN c_data c
+            ON b.PRODUCT_MODEL = c.VEHICLE_MODEL
+            AND b.SEQ_NO2026 = c.SEQ_NO_2026
+            LEFT JOIN buyer_code_config e
+            ON c.material_desc = e.HOST_CODE
+            WHERE b.IMPORT_DATE = TO_DATE(#{currentDate}, 'YYYY-MM-DD')
+            -- AND b.PRODUCT_MODEL = 'ZAT2500V753G'   -- 测试条件，实际可去掉
+            -- AND b.SEQ_NO2026 = '2026-8'            -- 测试条件
+            <if test="productModel != null and productModel != ''">
+                AND b.PRODUCT_MODEL = #{productModel}
+            </if>
+            <if test="seqNo2026 != null and seqNo2026 != ''">
+                AND b.SEQ_NO2026 = #{seqNo2026}
+            </if>
+            <if test="bareMachineOrderNo != null and bareMachineOrderNo != ''">
+                AND b.BARE_MACHINE_ORDER_NO = #{bareMachineOrderNo}
+            </if>
+            <if test="materialNo != null and materialNo != ''">
+                AND c.material_desc = #{materialNo}
+            </if>
+
+            UNION ALL
+
+            -- 第二部分：精确匹配失败，取回退配置的数据
+            SELECT
+            -- 日期字段（同原逻辑）
+            CASE
+            WHEN b.BOOM_TOP_BOTTOM_PLAN_DATE IS NOT NULL
+            AND b.BOOM_TOP_BOTTOM_PLAN_DATE != '/'
+            -- AND REGEXP_LIKE(b.BOOM_TOP_BOTTOM_PLAN_DATE, '^\d{4}/\d{1,2}/\d{1,2}$')
+            THEN b.BOOM_TOP_BOTTOM_PLAN_DATE
+            WHEN b.TURNTABLE_PLAN_DATE IS NOT NULL
+            AND b.TURNTABLE_PLAN_DATE != '/'
+            -- AND REGEXP_LIKE(b.TURNTABLE_PLAN_DATE, '^\d{4}/\d{1,2}/\d{1,2}$')
+            THEN b.TURNTABLE_PLAN_DATE
+            WHEN b.FINISHED_PRODUCT_PLAN_DATE IS NOT NULL
+            THEN TO_CHAR(b.FINISHED_PRODUCT_PLAN_DATE, 'YYYY/MM/DD')
+            ELSE TO_CHAR(b.CREATE_TIME, 'YYYY/MM/DD')
+            END AS chassisOnlinePlanDate,
+
+            CASE
+            WHEN b.prev_boom_top_bottom_plan_date IS NOT NULL
+            AND b.prev_boom_top_bottom_plan_date != '/'
+            -- AND REGEXP_LIKE(b.prev_boom_top_bottom_plan_date, '^\d{4}/\d{1,2}/\d{1,2}$')
+            THEN b.prev_boom_top_bottom_plan_date
+            WHEN b.prev_turntable_date IS NOT NULL
+            AND b.prev_turntable_date != '/'
+            -- AND REGEXP_LIKE(b.prev_turntable_date, '^\d{4}/\d{1,2}/\d{1,2}$')
+            THEN b.prev_turntable_date
+            WHEN b.prev_finished_product_date IS NOT NULL
+            THEN TO_CHAR(b.prev_finished_product_date, 'YYYY/MM/DD')
+            ELSE TO_CHAR(b.prev_create_time, 'YYYY/MM/DD')
+            END AS versionDate,
+
+            b.PRODUCT_MODEL AS productModel,
+            b.SEQ_NO2026 AS productionOrder,
+            b.BARE_MACHINE_ORDER_NO AS bareMachineOrderNo,
+            b.DRIVING_UNIT_ORDER_NO AS drivingUnitOrderNo,
+            -- 使用回退配置的字段
+            c.prev_quota1 AS quota1,
+            c.QUOTA2 AS quota2,
+            b.UNIT_QUANTITY AS unitQuantity,
+            c.material_desc AS materialNo,
+            c.material_No AS cylinderName,
+            e.TELI_CODE AS teliCode,
+            c.REQUIRED_QUANTITY AS config,
+            b.UNIT_QUANTITY * c.REQUIRED_QUANTITY AS requiredQuantity,
+            NULL AS pickingDate,
+            NULL AS pickedQuantity,
+            NULL AS closedStatus,
+            NULL AS category,
+            NULL AS hostPlanReleaseTime,
+            1 AS fallbackMatched
+            FROM b_data b
+            LEFT JOIN c_data c_exact
+            ON b.PRODUCT_MODEL = c_exact.VEHICLE_MODEL
+            AND b.SEQ_NO2026 = c_exact.SEQ_NO_2026
+            INNER JOIN c_model_latest c
+            ON b.PRODUCT_MODEL = c.VEHICLE_MODEL
+            LEFT JOIN buyer_code_config e
+            ON c.material_desc = e.HOST_CODE
+            WHERE b.IMPORT_DATE = TO_DATE(#{currentDate}, 'YYYY-MM-DD')
+            -- AND b.PRODUCT_MODEL = 'ZAT2500V753G'
+            -- AND b.SEQ_NO2026 = '2026-8'
+            AND c_exact.VEHICLE_MODEL IS NULL   -- 确保精确匹配失败
+            <if test="productModel != null and productModel != ''">
+                AND b.PRODUCT_MODEL = #{productModel}
+            </if>
+            <if test="seqNo2026 != null and seqNo2026 != ''">
+                AND b.SEQ_NO2026 = #{seqNo2026}
+            </if>
+            <if test="bareMachineOrderNo != null and bareMachineOrderNo != ''">
+                AND b.BARE_MACHINE_ORDER_NO = #{bareMachineOrderNo}
+            </if>
+            <if test="materialNo != null and materialNo != ''">
+                AND c.material_desc = #{materialNo}
+            </if>
+
+            UNION ALL
+
+            -- 第三部分：精确匹配失败且无回退配置（配置表无任何数据），展示需求计划，标记 fallbackMatched = 2
+            SELECT
+            -- 日期字段（同原逻辑）
+            CASE
+            WHEN b.BOOM_TOP_BOTTOM_PLAN_DATE IS NOT NULL AND b.BOOM_TOP_BOTTOM_PLAN_DATE != '/'
+            THEN b.BOOM_TOP_BOTTOM_PLAN_DATE
+            WHEN b.TURNTABLE_PLAN_DATE IS NOT NULL AND b.TURNTABLE_PLAN_DATE != '/'
+            THEN b.TURNTABLE_PLAN_DATE
+            WHEN b.FINISHED_PRODUCT_PLAN_DATE IS NOT NULL
+            THEN TO_CHAR(b.FINISHED_PRODUCT_PLAN_DATE, 'YYYY/MM/DD')
+            ELSE TO_CHAR(b.CREATE_TIME, 'YYYY/MM/DD')
+            END AS chassisOnlinePlanDate,
+
+            CASE
+            WHEN b.prev_boom_top_bottom_plan_date IS NOT NULL AND b.prev_boom_top_bottom_plan_date != '/'
+            THEN b.prev_boom_top_bottom_plan_date
+            WHEN b.prev_turntable_date IS NOT NULL AND b.prev_turntable_date != '/'
+            THEN b.prev_turntable_date
+            WHEN b.prev_finished_product_date IS NOT NULL
+            THEN TO_CHAR(b.prev_finished_product_date, 'YYYY/MM/DD')
+            ELSE TO_CHAR(b.prev_create_time, 'YYYY/MM/DD')
+            END AS versionDate,
+
+            b.PRODUCT_MODEL AS productModel,
+            b.SEQ_NO2026 AS productionOrder,
+            b.BARE_MACHINE_ORDER_NO AS bareMachineOrderNo,
+            b.DRIVING_UNIT_ORDER_NO AS drivingUnitOrderNo,
+            NULL AS quota1,
+            NULL AS quota2,
+            b.UNIT_QUANTITY AS unitQuantity,
+            NULL AS materialNo,
+            NULL AS cylinderName,
+            NULL AS teliCode,
+            NULL AS config,
+            NULL AS requiredQuantity,
+            NULL AS pickingDate,
+            NULL AS pickedQuantity,
+            NULL AS closedStatus,
+            NULL AS category,
+            NULL AS hostPlanReleaseTime,
+            2 AS fallbackMatched
+            FROM b_data b
+            LEFT JOIN c_data c_exact
+            ON b.PRODUCT_MODEL = c_exact.VEHICLE_MODEL
+            AND b.SEQ_NO2026 = c_exact.SEQ_NO_2026
+            LEFT JOIN c_model_latest c
+            ON b.PRODUCT_MODEL = c.VEHICLE_MODEL
+            WHERE b.IMPORT_DATE = TO_DATE(#{currentDate}, 'YYYY-MM-DD')
+            AND c_exact.VEHICLE_MODEL IS NULL   -- 精确匹配失败
+            AND c.VEHICLE_MODEL IS NULL         -- 回退配置也不存在（无任何配置）
+            <if test="productModel != null and productModel != ''">
+                AND b.PRODUCT_MODEL = #{productModel}
+            </if>
+            <if test="seqNo2026 != null and seqNo2026 != ''">
+                AND b.SEQ_NO2026 = #{seqNo2026}
+            </if>
+            <if test="bareMachineOrderNo != null and bareMachineOrderNo != ''">
+                AND b.BARE_MACHINE_ORDER_NO = #{bareMachineOrderNo}
+            </if>
+            <!-- 注意：materialNo 条件在此部分无法应用，因为 materialNo 为 NULL，如需过滤可自行调整 -->
+            )
+            ORDER BY productModel,TO_NUMBER(REGEXP_SUBSTR(productionOrder, '^[0-9]+')),TO_NUMBER(REGEXP_SUBSTR(productionOrder, '[0-9]+', 1, 2))
+    </sql>
+
+    <!-- 查询总数 -->
+    <select id="selectComparisonCount" resultType="long">
+        SELECT COUNT(*) FROM (
+        SELECT * FROM (
+        <include refid="coreQuery" />
+        ) t
+        WHERE 1=1
+        <if test="fallbackMatched != null">
+            AND t.fallbackMatched = #{fallbackMatched}
+        </if>
+        ) count_t
+    </select>
+
+    <!-- 分页查询 -->
+    <select id="selectComparisonPage" resultType="cn.iocoder.yudao.module.buyer.controller.admin.hostrequirementcomparison.vo.HostRequirementComparisonRespVO">
+        SELECT * FROM (
+        SELECT t.*, ROWNUM AS rn FROM (
+        SELECT * FROM (
+        <include refid="coreQuery" />
+        ) t2
+        WHERE 1=1
+        <if test="fallbackMatched != null">
+            AND t2.fallbackMatched = #{fallbackMatched}
+        </if>
+        ORDER BY t2.productModel,TO_NUMBER(REGEXP_SUBSTR(t2.productionOrder, '^[0-9]+')),
+        TO_NUMBER(REGEXP_SUBSTR(t2.productionOrder, '[0-9]+', 1, 2))
+        ) t
+        WHERE ROWNUM <![CDATA[ <= ]]> (#{pageNo} * #{pageSize})
+        ) t2
+        WHERE t2.rn <![CDATA[ > ]]> ((#{pageNo} - 1) * #{pageSize})
+        ORDER BY productModel,TO_NUMBER(REGEXP_SUBSTR(productionOrder, '^[0-9]+')),TO_NUMBER(REGEXP_SUBSTR(productionOrder, '[0-9]+', 1, 2)),bareMachineOrderNo,drivingUnitOrderNo
+    </select>
+
+
+    <sql id="coreQueryByMonth">
+        WITH
+        -- 当月计划数据（带上一版本字段）
+        b_data AS (
+        SELECT b.*,
+        LAG(b.BOOM_TOP_BOTTOM_PLAN_DATE)
+        OVER (PARTITION BY b.PRODUCT_MODEL, b.BARE_MACHINE_ORDER_NO ORDER BY b.IMPORT_DATE)
+        AS prev_boom_top_bottom_plan_date,
+        LAG(b.TURNTABLE_PLAN_DATE)
+        OVER (PARTITION BY b.PRODUCT_MODEL, b.BARE_MACHINE_ORDER_NO ORDER BY b.IMPORT_DATE)
+        AS prev_turntable_date,
+        LAG(b.FINISHED_PRODUCT_PLAN_DATE)
+        OVER (PARTITION BY b.PRODUCT_MODEL, b.BARE_MACHINE_ORDER_NO ORDER BY b.IMPORT_DATE)
+        AS prev_finished_product_date,
+        LAG(b.CREATE_TIME)
+        OVER (PARTITION BY b.PRODUCT_MODEL, b.BARE_MACHINE_ORDER_NO ORDER BY b.IMPORT_DATE)
+        AS prev_create_time
+        FROM BUYER_VEHICLE_PLAN b
+        WHERE b.IMPORT_DATE = TO_DATE(#{currentDate}, 'YYYY-MM-DD')
+        ),
+        -- 当月配置数据（仅当月最新导入版本）
+        c_data_current AS (
+        SELECT
+        VEHICLE_MODEL,
+        MATERIAL_DESC,
+        SEQ_NO_2026,
+        QUOTA2,
+        MAX(MATERIAL_NO) AS MATERIAL_NO,
+        SUM(REQUIRED_QUANTITY) AS REQUIRED_QUANTITY
+        FROM buyer_vehicle_config
+        WHERE IMPORT_DATE = TO_DATE(#{currentDate}, 'YYYY-MM-DD')
+        GROUP BY VEHICLE_MODEL, MATERIAL_DESC, SEQ_NO_2026, QUOTA2
+        ),
+        -- 上月配置数据（用于 prev_quota1）
+        c_data_prev AS (
+        SELECT
+        p.VEHICLE_MODEL,
+        p.MATERIAL_DESC,
+        p.SEQ_NO_2026,
+        p.QUOTA2,
+        MAX(p.MATERIAL_NO) AS MATERIAL_NO,
+        MAX(e.TELI_CODE) AS teli_code_prev,   -- 特力图号，聚合取最大
+        SUM(p.REQUIRED_QUANTITY) AS REQUIRED_QUANTITY
+        FROM buyer_vehicle_config p
+        LEFT JOIN buyer_code_config e ON p.material_desc = e.HOST_CODE
+        WHERE p.IMPORT_DATE = TO_DATE(#{compareDate}, 'YYYY-MM-DD')
+        GROUP BY p.VEHICLE_MODEL, p.MATERIAL_DESC, p.SEQ_NO_2026, p.QUOTA2
+        ),
+        -- 当月配置与上月配置关联（按型号、物料、序号）
+        c_data AS (
+        SELECT
+        c.*,
+        p.quota2 AS prev_quota1,
+        p.material_desc AS material_desc_prev,
+        p.teli_code_prev AS teli_code_prev,
+        p.REQUIRED_QUANTITY AS required_quantity_prev   -- 新增：上月配置
+        FROM c_data_current c
+        LEFT JOIN c_data_prev p
+        ON c.VEHICLE_MODEL = p.VEHICLE_MODEL
+        AND c.MATERIAL_DESC = p.MATERIAL_DESC
+        AND c.SEQ_NO_2026 = p.SEQ_NO_2026
+        ),
+        -- 回退配置（型号下最大序号）
+        c_model_latest AS (
+        SELECT *
+        FROM (
+        SELECT cd.*,
+        DENSE_RANK() OVER (
+        PARTITION BY cd.VEHICLE_MODEL
+        ORDER BY TO_NUMBER(REGEXP_SUBSTR(cd.SEQ_NO_2026, '[0-9]+', 1, 2)) DESC NULLS LAST
+        ) AS dr
+        FROM c_data cd
+        ) t
+        WHERE t.dr = 1
+        )
+        SELECT T.*,CASE WHEN t.materialNo = t.materialNoCompare THEN 0 ELSE 1 END AS materialNoDiff,
+        CASE WHEN ROUND(t.config,0) = ROUND(t.configCompare,0) THEN 0 ELSE 1 END AS configDiff,
+        CASE WHEN t.quota1 = t.quota2 THEN 0 ELSE 1 END AS quota1Diff,
+        CASE WHEN ROUND(t.requiredQuantity,0) = ROUND(t.requiredQuantityCompare,0) THEN 0 ELSE 1 END AS requiredQuantityDiff,
+        t.requiredQuantity -  t.requiredQuantityCompare aS requiredQuantityIncrease
+        FROM (
+        -- 第一部分：精确匹配成功
+        SELECT
+        CASE
+        WHEN b.BOOM_TOP_BOTTOM_PLAN_DATE IS NOT NULL
+        AND b.BOOM_TOP_BOTTOM_PLAN_DATE != '/'
+        -- AND REGEXP_LIKE(b.BOOM_TOP_BOTTOM_PLAN_DATE, '^\d{4}/\d{1,2}/\d{1,2}$')
+        THEN b.BOOM_TOP_BOTTOM_PLAN_DATE
+        WHEN b.TURNTABLE_PLAN_DATE IS NOT NULL
+        AND b.TURNTABLE_PLAN_DATE != '/'
+        -- AND REGEXP_LIKE(b.TURNTABLE_PLAN_DATE, '^\d{4}/\d{1,2}/\d{1,2}$')
+        THEN b.TURNTABLE_PLAN_DATE
+        WHEN b.FINISHED_PRODUCT_PLAN_DATE IS NOT NULL
+        THEN TO_CHAR(b.FINISHED_PRODUCT_PLAN_DATE, 'YYYY/MM/DD')
+        ELSE TO_CHAR(b.CREATE_TIME, 'YYYY/MM/DD')
+        END AS chassisOnlinePlanDate,
+        CASE
+        WHEN b.prev_boom_top_bottom_plan_date IS NOT NULL
+        AND b.prev_boom_top_bottom_plan_date != '/'
+        -- AND REGEXP_LIKE(b.prev_boom_top_bottom_plan_date, '^\d{4}/\d{1,2}/\d{1,2}$')
+        THEN b.prev_boom_top_bottom_plan_date
+        WHEN b.prev_turntable_date IS NOT NULL
+        AND b.prev_turntable_date != '/'
+        -- AND REGEXP_LIKE(b.prev_turntable_date, '^\d{4}/\d{1,2}/\d{1,2}$')
+        THEN b.prev_turntable_date
+        WHEN b.prev_finished_product_date IS NOT NULL
+        THEN TO_CHAR(b.prev_finished_product_date, 'YYYY/MM/DD')
+        ELSE TO_CHAR(b.prev_create_time, 'YYYY/MM/DD')
+        END AS versionDate,
+        b.PRODUCT_MODEL AS productModel,
+        b.SEQ_NO2026 AS productionOrder,
+        b.BARE_MACHINE_ORDER_NO AS bareMachineOrderNo,
+        b.DRIVING_UNIT_ORDER_NO AS drivingUnitOrderNo,
+        c_exact.prev_quota1 AS quota1,
+        c_exact.QUOTA2 AS quota2,
+        b.UNIT_QUANTITY AS unitQuantity,
+        c_exact.material_desc AS materialNo,
+        c_exact.material_No AS cylinderName,
+        e.TELI_CODE AS teliCode,
+        c_exact.REQUIRED_QUANTITY AS config,
+        b.UNIT_QUANTITY * c_exact.REQUIRED_QUANTITY AS requiredQuantity,
+        -- 对比月字段
+        c_exact.material_desc_prev AS materialNoCompare,
+        c_exact.teli_code_prev AS teliCodeCompare,
+        c_exact.required_quantity_prev AS configCompare,
+        b.UNIT_QUANTITY * c_exact.required_quantity_prev AS requiredQuantityCompare,
+        NULL AS pickingDate,
+        NULL AS pickedQuantity,
+        NULL AS closedStatus,
+        NULL AS category,
+        NULL AS hostPlanReleaseTime
+        FROM b_data b
+        INNER JOIN c_data c_exact
+        ON b.PRODUCT_MODEL = c_exact.VEHICLE_MODEL
+        AND b.SEQ_NO2026 = c_exact.SEQ_NO_2026
+        LEFT JOIN buyer_code_config e
+        ON c_exact.material_desc = e.HOST_CODE
+        WHERE 1=1
+        <if test="productModel != null and productModel != ''">
+            AND b.PRODUCT_MODEL = #{productModel}
+        </if>
+        <if test="seqNo2026 != null and seqNo2026 != ''">
+            AND b.SEQ_NO2026 = #{seqNo2026}
+        </if>
+        <if test="bareMachineOrderNo != null and bareMachineOrderNo != ''">
+            AND b.BARE_MACHINE_ORDER_NO = #{bareMachineOrderNo}
+        </if>
+        <if test="materialNo != null and materialNo != ''">
+            AND c_model_latest.material_desc = #{materialNo}
+        </if>
+
+        UNION ALL
+
+        -- 第二部分：精确匹配失败，使用回退配置
+        SELECT
+        CASE
+        WHEN b.BOOM_TOP_BOTTOM_PLAN_DATE IS NOT NULL
+        AND b.BOOM_TOP_BOTTOM_PLAN_DATE != '/'
+        -- AND REGEXP_LIKE(b.BOOM_TOP_BOTTOM_PLAN_DATE, '^\d{4}/\d{1,2}/\d{1,2}$')
+        THEN b.BOOM_TOP_BOTTOM_PLAN_DATE
+        WHEN b.TURNTABLE_PLAN_DATE IS NOT NULL
+        AND b.TURNTABLE_PLAN_DATE != '/'
+        -- AND REGEXP_LIKE(b.TURNTABLE_PLAN_DATE, '^\d{4}/\d{1,2}/\d{1,2}$')
+        THEN b.TURNTABLE_PLAN_DATE
+        WHEN b.FINISHED_PRODUCT_PLAN_DATE IS NOT NULL
+        THEN TO_CHAR(b.FINISHED_PRODUCT_PLAN_DATE, 'YYYY/MM/DD')
+        ELSE TO_CHAR(b.CREATE_TIME, 'YYYY/MM/DD')
+        END AS chassisOnlinePlanDate,
+        CASE
+        WHEN b.prev_boom_top_bottom_plan_date IS NOT NULL
+        AND b.prev_boom_top_bottom_plan_date != '/'
+        -- AND REGEXP_LIKE(b.prev_boom_top_bottom_plan_date, '^\d{4}/\d{1,2}/\d{1,2}$')
+        THEN b.prev_boom_top_bottom_plan_date
+        WHEN b.prev_turntable_date IS NOT NULL
+        AND b.prev_turntable_date != '/'
+        -- AND REGEXP_LIKE(b.prev_turntable_date, '^\d{4}/\d{1,2}/\d{1,2}$')
+        THEN b.prev_turntable_date
+        WHEN b.prev_finished_product_date IS NOT NULL
+        THEN TO_CHAR(b.prev_finished_product_date, 'YYYY/MM/DD')
+        ELSE TO_CHAR(b.prev_create_time, 'YYYY/MM/DD')
+        END AS versionDate,
+        b.PRODUCT_MODEL AS productModel,
+        b.SEQ_NO2026 AS productionOrder,
+        b.BARE_MACHINE_ORDER_NO AS bareMachineOrderNo,
+        b.DRIVING_UNIT_ORDER_NO AS drivingUnitOrderNo,
+        c_model_latest.prev_quota1 AS quota1,
+        c_model_latest.QUOTA2 AS quota2,
+        b.UNIT_QUANTITY AS unitQuantity,
+        c_model_latest.material_desc AS materialNo,
+        c_model_latest.material_No AS cylinderName,
+        e.TELI_CODE AS teliCode,
+        c_model_latest.REQUIRED_QUANTITY AS config,
+        b.UNIT_QUANTITY * c_model_latest.REQUIRED_QUANTITY AS requiredQuantity,
+        -- 对比月字段（从回退配置中获取其上一版本）
+        c_model_latest.material_desc_prev AS materialNoCompare,
+        c_model_latest.teli_code_prev AS teliCodeCompare,
+        c_model_latest.required_quantity_prev AS configCompare,
+        b.UNIT_QUANTITY * c_model_latest.required_quantity_prev AS requiredQuantityCompare,
+        NULL AS pickingDate,
+        NULL AS pickedQuantity,
+        NULL AS closedStatus,
+        NULL AS category,
+        NULL AS hostPlanReleaseTime
+        FROM b_data b
+        LEFT JOIN c_data c_exact
+        ON b.PRODUCT_MODEL = c_exact.VEHICLE_MODEL
+        AND b.SEQ_NO2026 = c_exact.SEQ_NO_2026
+        INNER JOIN c_model_latest
+        ON b.PRODUCT_MODEL = c_model_latest.VEHICLE_MODEL
+
+        LEFT JOIN buyer_code_config e
+        ON c_model_latest.material_desc = e.HOST_CODE
+        WHERE c_exact.VEHICLE_MODEL IS NULL   -- 精确匹配失败
+        <if test="productModel != null and productModel != ''">
+            AND b.PRODUCT_MODEL = #{productModel}
+        </if>
+        <if test="seqNo2026 != null and seqNo2026 != ''">
+            AND b.SEQ_NO2026 = #{seqNo2026}
+        </if>
+        <if test="bareMachineOrderNo != null and bareMachineOrderNo != ''">
+            AND b.BARE_MACHINE_ORDER_NO = #{bareMachineOrderNo}
+        </if>
+        <if test="materialNo != null and materialNo != ''">
+            AND c_model_latest.material_desc = #{materialNo}
+        </if>
+        ) t
+        WHERE NOT (t.materialNo = t.materialNoCompare
+        AND ROUND(t.config,0) = ROUND(t.configCompare,0)
+        AND ROUND(t.requiredQuantity,0) = ROUND(t.requiredQuantityCompare,0)
+        and QUOTA1 = QUOTA2)
+        ORDER BY productModel, TO_NUMBER(REGEXP_SUBSTR(productionOrder, '^[0-9]+')),
+        TO_NUMBER(REGEXP_SUBSTR(productionOrder, '[0-9]+', 1, 2))
+    </sql>
+
+
+    <select id="selectByMonth" resultType="cn.iocoder.yudao.module.buyer.controller.admin.hostrequirementcomparison.vo.HostRequirementComparisonRespVO">
+        <include refid="coreQueryByMonth" />
+    </select>
+
+
+    <!-- 对比数据总数 -->
+    <select id="selectDiffCount" resultType="long">
+        SELECT COUNT(*) FROM (
+        <include refid="coreQueryByMonth" />
+        ) t
+    </select>
+
+    <!-- 分页查询对比数据 -->
+    <select id="selectDiffPage" resultType="cn.iocoder.yudao.module.buyer.controller.admin.hostrequirementcomparisondiff.vo.HostRequirementComparisonDiffVO">
+        SELECT * FROM (
+        SELECT t.*, ROWNUM AS rn FROM (
+        <include refid="coreQueryByMonth" />
+        ) t
+        WHERE ROWNUM <![CDATA[ <= ]]> (#{pageNo} * #{pageSize})
+        ) t2
+        WHERE t2.rn <![CDATA[ > ]]> ((#{pageNo} - 1) * #{pageSize})
+    </select>
+
+    <select id="selectAllForExport" resultType="cn.iocoder.yudao.module.buyer.controller.admin.hostrequirementcomparison.vo.HostRequirementComparisonRespVO">
+        SELECT * FROM (
+       <include refid="coreQuery" />
+       ) t
+    order by productModel,TO_NUMBER(REGEXP_SUBSTR(productionOrder, '^[0-9]+')),TO_NUMBER(REGEXP_SUBSTR(productionOrder, '[0-9]+', 1, 2)),bareMachineOrderNo,drivingUnitOrderNo
+    </select>
+
+    <select id="selectDiffList" resultType="cn.iocoder.yudao.module.buyer.controller.admin.hostrequirementcomparisondiff.vo.HostRequirementComparisonDiffVO">
+        <include refid="coreQueryByMonth" />
+    </select>
+
+</mapper>

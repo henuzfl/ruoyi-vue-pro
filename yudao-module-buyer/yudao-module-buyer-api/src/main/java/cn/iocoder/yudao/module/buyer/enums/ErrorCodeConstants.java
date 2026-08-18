@@ -173,5 +173,13 @@ public interface ErrorCodeConstants {
     ErrorCode BUYER_TIME_STOCK_NOT_EXISTS = new ErrorCode(1_003_004_000, "实时库存不存在");
     ErrorCode HOST_CONFIG_NOT_EXISTS = new ErrorCode(1_003_005_000, "营销主机配置不存在");
     ErrorCode MATERIAL_FORECAST_NOT_EXISTS = new ErrorCode(1_003_006_000, "营销材料备料预测不存在");
+    ErrorCode VEHICLE_PLAN_NOT_EXISTS = new ErrorCode(1_003_007_000, "买家车辆营销计划表（主机厂计划）不存在");
+    ErrorCode VEHICLE_CONFIG_NOT_EXISTS = new ErrorCode(1_003_008_000, "主机车型配置不存在");
+    ErrorCode CODE_CONFIG_NOT_EXISTS = new ErrorCode(1_003_009_000, "主机编码配置不存在");
+    ErrorCode HOST_REQUIREMENT_COMPARISON_NOT_EXISTS = new ErrorCode(1_003_010_000, "主机需求对比记录不存在");
+    ErrorCode PRODUCTION_TRANSFER_NOT_EXISTS = new ErrorCode(1_003_011_000, "MES转序单信息不存在");
+    ErrorCode OPEN_ORDER_NOT_EXISTS = new ErrorCode(1_003_012_000, "采购未清订单不存在");
+    ErrorCode PRODUCTION_TRANSFER_SYNC_ERROR = new ErrorCode(1_003_013_000, "同步MES数据失败");
+    ErrorCode DELIVER_NOT_EXISTS = new ErrorCode(1_003_014_000, "配送与采购报表不存在");
 
 }

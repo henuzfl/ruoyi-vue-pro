@@ -6,8 +6,12 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
 import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
 import cn.iocoder.yudao.module.aps.dal.dataobject.masterimport.MasterImportDO;
+import com.baomidou.dynamic.datasource.annotation.DS;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import org.apache.ibatis.annotations.Mapper;
 import cn.iocoder.yudao.module.aps.controller.admin.masterimport.vo.*;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * 物料主数据导入 Mapper
@@ -15,6 +19,7 @@ import cn.iocoder.yudao.module.aps.controller.admin.masterimport.vo.*;
  * @author 柳文
  */
 @Mapper
+@DS("oracle")   // 关键：指定 Oracle
 public interface MasterImportMapper extends BaseMapperX<MasterImportDO> {
 
     default PageResult<MasterImportDO> selectPage(MasterImportPageReqVO reqVO) {
@@ -41,4 +46,28 @@ public interface MasterImportMapper extends BaseMapperX<MasterImportDO> {
                 .orderByDesc(MasterImportDO::getId));
     }
 
+    /**
+     * 根据物料号列表物理删除（直接 DELETE SQL）
+     * @param materialNos 物料号集合
+     * @return 删除行数
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    @DS("oracle") // 指定使用 Oracle 数据源
+    int deleteByMaterialNos(@Param("materialNos") Collection<String> materialNos);
+
+    /**
+     * 批量插入物料主数据
+     * @param list 待插入的数据
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    @DS("oracle") // 指定使用 Oracle 数据源
+    void batchInsert(@Param("list") List<MasterImportDO> list);
+
+    /**
+     * 批量获取指定数量的序列下一个值
+     * @param count 需要的序列值个数
+     * @return 序列值列表
+     */
+    @Select("SELECT material_master_import_seq.NEXTVAL FROM DUAL CONNECT BY LEVEL <= #{count}")
+    List<Long> selectNextIds(@Param("count") int count);
 }

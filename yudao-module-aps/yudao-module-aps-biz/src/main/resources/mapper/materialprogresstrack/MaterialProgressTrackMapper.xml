@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.aps.dal.mysql.materialprogresstrack.MaterialProgressTrackMapper">
+
+    <!-- 主表总数（修正为子查询去重） -->
+    <select id="selectMaterialSummaryCount" resultType="long">
+        SELECT COUNT(*)
+        FROM (
+        SELECT DISTINCT material_code, workshop, TO_CHAR(schedule_time, 'YYYY-MM') AS demandMonth
+        FROM (
+        -- 先按订单+物料+排产时间去重，取唯一记录
+        SELECT DISTINCT order_no, material_code, workshop, schedule_time
+        FROM aps_matching_result_1
+        WHERE deleted = 0
+        <if test="startDate != null and startDate != ''">
+            AND schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND workshop = #{workshop}
+        </if>
+        <if test="materialCode != null and materialCode != ''">
+            AND material_code LIKE '%' || #{materialCode} || '%'
+        </if>
+        <if test="materialDesc != null and materialDesc != ''">
+            AND material_desc LIKE '%' || #{materialDesc} || '%'
+        </if>
+        <if test="onlyAbnormal != null and onlyAbnormal == true">
+            AND EXISTS (
+            SELECT 1 FROM aps_matching_result_1 sub
+            WHERE sub.material_code = aps_matching_result_1.material_code
+            AND sub.workshop = aps_matching_result_1.workshop
+            AND TO_CHAR(sub.schedule_time, 'YYYY-MM') = TO_CHAR(aps_matching_result_1.schedule_time, 'YYYY-MM')
+            AND sub.open_order_quantity > 0
+            )
+        </if>
+        ) base
+        )
+    </select>
+
+    <!-- 主表分页列表（先按订单去重再汇总） -->
+    <select id="selectMaterialSummaryPage" resultType="cn.iocoder.yudao.module.aps.controller.admin.materialprogresstrack.vo.MaterialSummaryRespVO">
+        SELECT * FROM (
+        SELECT t.*, ROWNUM AS rn FROM (
+        SELECT
+        material_code AS materialCode,
+        MAX(material_desc) AS materialDesc,
+        workshop,
+        TO_CHAR(schedule_time, 'YYYY-MM') AS demandMonth,
+        SUM(quantity) AS totalDemand,
+        SUM(completed_quantity) AS totalCompleted,
+        MAX(stock) AS stock
+        FROM (
+        -- 内层：按订单+物料+排产时间+车间去重，取唯一值
+        SELECT
+        order_no,
+        material_code,
+        MAX(material_desc) AS material_desc,
+        workshop,
+        schedule_time,
+        MAX(quantity) AS quantity,
+        MAX(completed_quantity) AS completed_quantity,
+        MAX(stock) AS stock
+        FROM aps_matching_result_1
+        WHERE deleted = 0
+        <if test="startDate != null and startDate != ''">
+            AND schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND schedule_time &lt; TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        <if test="workshop != null and workshop != ''">
+            AND workshop = #{workshop}
+        </if>
+        <if test="materialCode != null and materialCode != ''">
+            AND material_code LIKE '%' || #{materialCode} || '%'
+        </if>
+        <if test="materialDesc != null and materialDesc != ''">
+            AND material_desc LIKE '%' || #{materialDesc} || '%'
+        </if>
+        <if test="onlyAbnormal != null and onlyAbnormal == true">
+            AND EXISTS (
+            SELECT 1 FROM aps_matching_result_1 sub
+            WHERE sub.material_code = aps_matching_result_1.material_code
+            AND sub.workshop = aps_matching_result_1.workshop
+            AND TO_CHAR(sub.schedule_time, 'YYYY-MM') = TO_CHAR(aps_matching_result_1.schedule_time, 'YYYY-MM')
+            AND sub.open_order_quantity > 0
+            )
+        </if>
+        GROUP BY order_no, material_code, workshop, schedule_time
+        ) dedup
+        GROUP BY material_code, workshop, TO_CHAR(schedule_time, 'YYYY-MM')
+        ORDER BY demandMonth DESC, workshop, materialCode
+        ) t
+        WHERE ROWNUM &lt;= (#{pageNo} * #{pageSize})
+        ) t2
+        WHERE t2.rn &gt; ((#{pageNo} - 1) * #{pageSize})
+    </select>
+
+    <!-- 子件明细（含供应商） -->
+    <select id="selectMaterialChildren" resultMap="MaterialChildrenResultMap">
+        SELECT
+            purchase_material AS childMaterialCode,
+            MAX(purchase_material_desc) AS childMaterialDesc,
+            SUM(purchase_required_qty) AS totalDemand,
+            SUM(delivered_quantity) AS totalIssued,
+            SUM(TO_DELIVER_QUANTITY) AS stockQty,
+            SUM(purchase_required_qty) - SUM(delivered_quantity) - SUM(TO_DELIVER_QUANTITY) AS shortageQty,
+            supplier_name,
+            SUM(open_order_quantity) AS supplyQty
+        FROM aps_matching_result_1
+        WHERE deleted = 0
+          AND material_code = #{materialCode}
+          AND workshop = #{workshop}
+          AND TO_CHAR(schedule_time, 'YYYY-MM') = #{demandMonth}
+        GROUP BY purchase_material, supplier_name
+        ORDER BY purchase_material
+    </select>
+
+    <resultMap id="MaterialChildrenResultMap" type="cn.iocoder.yudao.module.aps.controller.admin.materialprogresstrack.vo.MaterialChildrenRespVO">
+        <id column="childMaterialCode" property="childMaterialCode"/>
+        <result column="childMaterialDesc" property="childMaterialDesc"/>
+        <result column="totalDemand" property="totalDemand"/>
+        <result column="totalIssued" property="totalIssued"/>
+        <result column="stockQty" property="stockQty"/>
+        <result column="shortageQty" property="shortageQty"/>
+        <collection property="suppliers" ofType="cn.iocoder.yudao.module.aps.controller.admin.materialprogresstrack.vo.SupplierInfo">
+            <result column="supplier_name" property="supplierName"/>
+            <result column="supplyQty" property="supplyQty"/>
+        </collection>
+    </resultMap>
+
+</mapper>

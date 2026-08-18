@@ -118,4 +118,18 @@ public class MaterialKittingToolDO extends BaseDO {
      */
     private Double shortageQty;
 
+    /**
+     * 是否全部出库
+     */
+    private String openFlag;
+
+    /*
+   订单类型
+    */
+    private String orderMessage;
+
+    /*
+    父订单
+     */
+    private String parentOrderNo;
 }

@@ -31,7 +31,7 @@ public class BomImportDO extends BaseDO {
     /**
      * 主键编号
      */
-    @TableId
+    @TableId(value = "id", type = IdType.ASSIGN_ID) // 使用雪花算法
     private Long id;
     /**
      * 父节点行号

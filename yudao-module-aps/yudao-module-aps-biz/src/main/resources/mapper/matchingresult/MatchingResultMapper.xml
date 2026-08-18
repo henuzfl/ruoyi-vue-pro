@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.aps.dal.mysql.matchingresult.MatchingResultMapper">
+
+    <!--
+        一般情况下，尽可能使用 Mapper 进行 CRUD 增删改查即可。
+        无法满足的场景，例如说多表关联查询，才使用 XML 编写 SQL。
+        代码生成器暂时只生成 Mapper XML 文件本身，更多推荐 MybatisX 快速开发插件来生成查询。
+        文档可见：https://www.iocoder.cn/MyBatis/x-plugins/
+     -->
+    <!-- 导出分页查询：直接 LEFT JOIN 反馈表，用 LISTAGG 合并备注 -->
+    <select id="selectExportPage" resultType="cn.iocoder.yudao.module.aps.controller.admin.matchingresult.vo.MatchingResultRespVO">
+        SELECT
+        m.id,
+        m.order_no AS orderNo,
+        m.schedule_time AS scheduleTime,
+        m.material_code AS materialCode,
+        m.material_desc AS materialDesc,
+        m.workshop,
+        m.quantity,
+        m.completed_quantity AS completedQuantity,
+        m.stock,
+        m.transfer_order AS transferOrder,
+        m.component_order AS componentOrder,
+        m.component_code AS componentCode,
+        m.component_desc AS componentDesc,
+        m.component_workshop AS componentWorkshop,
+        m.basic_start_date AS basicStartDate,
+        m.required_quantity AS requiredQuantity,
+        m.purchase_material AS purchaseMaterial,
+        m.purchase_material_desc AS purchaseMaterialDesc,
+        m.size_dimension AS sizeDimension,
+        m.purchase_required_qty AS purchaseRequiredQty,
+        m.delivered_quantity AS deliveredQuantity,
+        m.to_deliver_quantity AS toDeliverQuantity,
+        m.kit_qty AS kitQty,
+        m.kit_qty_single AS kitQtySingle,
+        m.purchase_order AS purchaseOrder,
+        m.line_number AS lineNumber,
+        m.order_date AS orderDate,
+        m.required_delivery_date AS requiredDeliveryDate,
+        m.actual_arrival_date AS actualArrivalDate,
+        m.supplier_name AS supplierName,
+        m.open_order_quantity AS openOrderQuantity,
+        m.allocated_required_qty AS allocatedRequiredQty,
+        m.remain_required_qty AS remainRequiredQty,
+        -- 使用 XMLAGG 替代 LISTAGG（Oracle 10g 兼容）
+        RTRIM(
+        XMLAGG(
+        XMLELEMENT(e, f.feedback_remark || '; ')
+        ORDER BY f.create_time
+        ).EXTRACT('//text()'),
+        '; '
+        ) AS feedbackRemarks
+        FROM aps_matching_result m
+        LEFT JOIN aps_purchase_feedback f
+        ON f.order_no = m.order_no
+        AND f.schedule_time = m.schedule_time
+        AND f.purchase_material = m.purchase_material
+        AND f.deleted = 0
+        AND f.tenant_id = 1   -- 若有多租户，添加此条件（可根据项目调整）
+        WHERE m.deleted = 0
+        AND m.tenant_id = 1
+        <!-- 条件部分保持不变 -->
+        <if test="reqVO.orderNos != null and reqVO.orderNos.size() > 0">
+            AND m.order_no IN
+            <foreach collection="reqVO.orderNos" item="orderNo" open="(" separator="," close=")">
+                #{orderNo}
+            </foreach>
+        </if>
+        <if test="reqVO.materialCode != null and reqVO.materialCode != ''">
+            AND m.material_code = #{reqVO.materialCode}
+        </if>
+        <if test="reqVO.materialDesc != null and reqVO.materialDesc != ''">
+            AND m.material_desc = #{reqVO.materialDesc}
+        </if>
+        <if test="reqVO.workshop != null and reqVO.workshop != ''">
+            AND m.workshop = #{reqVO.workshop}
+        </if>
+        <!-- 其他等值条件（同原 selectPage 中的处理） -->
+        <if test="reqVO.quantity != null">
+            AND m.quantity = #{reqVO.quantity}
+        </if>
+        <if test="reqVO.completedQuantity != null">
+            AND m.completed_quantity = #{reqVO.completedQuantity}
+        </if>
+        <if test="reqVO.stock != null">
+            AND m.stock = #{reqVO.stock}
+        </if>
+        <if test="reqVO.transferOrder != null">
+            AND m.transfer_order = #{reqVO.transferOrder}
+        </if>
+        <if test="reqVO.componentOrder != null and reqVO.componentOrder != ''">
+            AND m.component_order = #{reqVO.componentOrder}
+        </if>
+        <if test="reqVO.componentCode != null and reqVO.componentCode != ''">
+            AND m.component_code = #{reqVO.componentCode}
+        </if>
+        <if test="reqVO.componentDesc != null and reqVO.componentDesc != ''">
+            AND m.component_desc = #{reqVO.componentDesc}
+        </if>
+        <if test="reqVO.componentWorkshop != null and reqVO.componentWorkshop != ''">
+            AND m.component_workshop = #{reqVO.componentWorkshop}
+        </if>
+        <if test="reqVO.requiredQuantity != null">
+            AND m.required_quantity = #{reqVO.requiredQuantity}
+        </if>
+        <if test="reqVO.unfinishedQuantity != null">
+            AND m.unfinished_quantity = #{reqVO.unfinishedQuantity}
+        </if>
+        <if test="reqVO.purchaseMaterial != null and reqVO.purchaseMaterial != ''">
+            AND m.purchase_material = #{reqVO.purchaseMaterial}
+        </if>
+        <if test="reqVO.purchaseMaterialDesc != null and reqVO.purchaseMaterialDesc != ''">
+            AND m.purchase_material_desc = #{reqVO.purchaseMaterialDesc}
+        </if>
+        <if test="reqVO.purchaseRequiredQty != null">
+            AND m.purchase_required_qty = #{reqVO.purchaseRequiredQty}
+        </if>
+        <if test="reqVO.deliveredQuantity != null">
+            AND m.delivered_quantity = #{reqVO.deliveredQuantity}
+        </if>
+        <if test="reqVO.toDeliverQuantity != null">
+            AND m.to_deliver_quantity = #{reqVO.toDeliverQuantity}
+        </if>
+        <if test="reqVO.kitQtySingle != null">
+            AND m.kit_qty_single = #{reqVO.kitQtySingle}
+        </if>
+        <if test="reqVO.purchaseOrder != null and reqVO.purchaseOrder != ''">
+            AND m.purchase_order = #{reqVO.purchaseOrder}
+        </if>
+        <if test="reqVO.lineNumber != null">
+            AND m.line_number = #{reqVO.lineNumber}
+        </if>
+        <if test="reqVO.sizeDimension != null and reqVO.sizeDimension != ''">
+            AND m.size_dimension = #{reqVO.sizeDimension}
+        </if>
+        <if test="reqVO.supplierName != null and reqVO.supplierName != ''">
+            AND m.supplier_name LIKE CONCAT('%', #{reqVO.supplierName}, '%')
+        </if>
+        <if test="reqVO.openOrderQuantity != null">
+            AND m.open_order_quantity = #{reqVO.openOrderQuantity}
+        </if>
+        <!-- 日期范围条件 -->
+        <if test="reqVO.scheduleTime != null and reqVO.scheduleTime.length == 2">
+            <if test="reqVO.scheduleTime[0] != null">
+                AND m.schedule_time &gt;= #{reqVO.scheduleTime[0]}
+            </if>
+            <if test="reqVO.scheduleTime[1] != null">
+                AND m.schedule_time &lt;= #{reqVO.scheduleTime[1]}
+            </if>
+        </if>
+        <if test="reqVO.basicStartDate != null and reqVO.basicStartDate.length == 2">
+            <if test="reqVO.basicStartDate[0] != null">
+                AND m.basic_start_date &gt;= #{reqVO.basicStartDate[0]}
+            </if>
+            <if test="reqVO.basicStartDate[1] != null">
+                AND m.basic_start_date &lt;= #{reqVO.basicStartDate[1]}
+            </if>
+        </if>
+        <if test="reqVO.orderDate != null and reqVO.orderDate.length == 2">
+            <if test="reqVO.orderDate[0] != null">
+                AND m.order_date &gt;= #{reqVO.orderDate[0]}
+            </if>
+            <if test="reqVO.orderDate[1] != null">
+                AND m.order_date &lt;= #{reqVO.orderDate[1]}
+            </if>
+        </if>
+        <if test="reqVO.requiredDeliveryDate != null and reqVO.requiredDeliveryDate.length == 2">
+            <if test="reqVO.requiredDeliveryDate[0] != null">
+                AND m.required_delivery_date &gt;= #{reqVO.requiredDeliveryDate[0]}
+            </if>
+            <if test="reqVO.requiredDeliveryDate[1] != null">
+                AND m.required_delivery_date &lt;= #{reqVO.requiredDeliveryDate[1]}
+            </if>
+        </if>
+        <if test="reqVO.actualArrivalDate != null and reqVO.actualArrivalDate.length == 2">
+            <if test="reqVO.actualArrivalDate[0] != null">
+                AND m.actual_arrival_date &gt;= #{reqVO.actualArrivalDate[0]}
+            </if>
+            <if test="reqVO.actualArrivalDate[1] != null">
+                AND m.actual_arrival_date &lt;= #{reqVO.actualArrivalDate[1]}
+            </if>
+        </if>
+        <!-- createTime 范围 -->
+        <if test="reqVO.createTime != null and reqVO.createTime.length == 2">
+            <if test="reqVO.createTime[0] != null">
+                AND m.create_time &gt;= #{reqVO.createTime[0]}
+            </if>
+            <if test="reqVO.createTime[1] != null">
+                AND m.create_time &lt;= #{reqVO.createTime[1]}
+            </if>
+        </if>
+        <!-- 分组（因为 LISTAGG 是聚合函数，必须 GROUP BY 所有非聚合字段） -->
+        GROUP BY
+        m.id, m.order_no, m.schedule_time, m.material_code, m.material_desc,
+        m.workshop, m.quantity, m.completed_quantity, m.stock, m.transfer_order,
+        m.component_order, m.component_code, m.component_desc, m.component_workshop,
+        m.basic_start_date, m.required_quantity, m.purchase_material,
+        m.purchase_material_desc, m.size_dimension, m.purchase_required_qty,
+        m.delivered_quantity, m.to_deliver_quantity, m.kit_qty, m.kit_qty_single,
+        m.purchase_order, m.line_number, m.order_date, m.required_delivery_date,
+        m.actual_arrival_date, m.supplier_name, m.open_order_quantity , m.allocated_required_qty, m.remain_required_qty
+        ORDER BY m.schedule_time ASC, m.workshop ASC, m.order_no ASC
+    </select>
+
+</mapper>

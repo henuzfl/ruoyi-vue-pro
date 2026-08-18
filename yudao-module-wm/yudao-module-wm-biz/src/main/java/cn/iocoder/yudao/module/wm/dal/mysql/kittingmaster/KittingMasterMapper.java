@@ -21,4 +21,15 @@ public interface KittingMasterMapper {
      */
     @InterceptorIgnore(tenantLine = "true")
     List<KittingMasterDO> selectKittingMasterByParams(@Param("params") KittingMasterPageReqVO params);
+
+    // 添加存储过程调用方法
+    @InterceptorIgnore(tenantLine = "true")
+    void callcompleProcedure();
+
+    /**
+     * 根据参数查询齐套分析数据-存储过程
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    List<KittingMasterDO> selectKittingcalculateByParams(@Param("params") KittingMasterPageReqVO params);
+
 }

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.wm.dal.mysql.openordersync.OpenOrderSyncMapper">
+
+    <delete id="physicalDeleteAll">
+        DELETE FROM buyer_open_order
+    </delete>
+
+    <!-- 批量插入（使用 INSERT ALL 语法，适配 Oracle） -->
+    <insert id="batchInsert">
+        INSERT ALL
+        <foreach collection="list" item="item" separator=" ">
+            INTO buyer_open_order (
+            id, order_date, buyer_order_no, line_item,
+            material_no, material_desc, order_qty, received_qty, open_qty,
+            unit, required_arrival_date, actual_arrival_date,
+            supplier_desc, customer, buyer_group, document_type,
+            production_order_no, brand_info, unit_price, supplier_code,
+            receiving_warehouse, total_amount, buyer_req_no,
+            create_time, update_time, creator, updater, deleted, tenant_id
+            ) VALUES (
+            #{item.id, jdbcType=DECIMAL},
+            #{item.orderDate, jdbcType=DATE},
+            #{item.buyerOrderNo, jdbcType=VARCHAR},
+            #{item.lineItem, jdbcType=DECIMAL},
+            #{item.materialNo, jdbcType=VARCHAR},
+            #{item.materialDesc, jdbcType=VARCHAR},
+            #{item.orderQty, jdbcType=DECIMAL},
+            #{item.receivedQty, jdbcType=DECIMAL},
+            #{item.openQty, jdbcType=DECIMAL},
+            #{item.unit, jdbcType=VARCHAR},
+            #{item.requiredArrivalDate, jdbcType=DATE},
+            #{item.actualArrivalDate, jdbcType=DATE},
+            #{item.supplierDesc, jdbcType=VARCHAR},
+            #{item.customer, jdbcType=VARCHAR},
+            #{item.buyerGroup, jdbcType=VARCHAR},
+            #{item.documentType, jdbcType=VARCHAR},
+            #{item.productionOrderNo, jdbcType=VARCHAR},
+            #{item.brandInfo, jdbcType=VARCHAR},
+            #{item.unitPrice, jdbcType=DECIMAL},
+            #{item.supplierCode, jdbcType=VARCHAR},
+            #{item.receivingWarehouse, jdbcType=VARCHAR},
+            #{item.totalAmount, jdbcType=DECIMAL},
+            #{item.buyerReqNo, jdbcType=VARCHAR},
+            #{item.createTime, jdbcType=TIMESTAMP},
+            #{item.updateTime, jdbcType=TIMESTAMP},
+            #{item.creator, jdbcType=VARCHAR},
+            #{item.updater, jdbcType=VARCHAR},
+            0,                                 <!-- deleted 固定为 0 -->
+            1 <!-- 若需动态租户可从对象获取，也可写死 1 -->
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+</mapper>

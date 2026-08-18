@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>cn.iocoder.boot</groupId>
+        <artifactId>yudao</artifactId>
+        <version>${revision}</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <modules>
+        <module>yudao-module-marketing-api</module>
+        <module>yudao-module-marketing-biz</module>
+    </modules>
+    <artifactId>yudao-module-marketing</artifactId>
+    <packaging>pom</packaging>
+    <dependencies>
+        <!-- ORACLE相关 -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>21.5.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.database.nls</groupId>
+            <artifactId>orai18n</artifactId>
+            <version>21.5.0.0</version>
+        </dependency>
+    </dependencies>
+    <name>${project.artifactId}</name>
+    <description>
+        marketing 模块，主要实现 营销 等功能。
+    </description>
+
+</project>

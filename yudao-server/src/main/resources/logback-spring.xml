@@ -11,6 +11,7 @@
     <logger name="org.springframework.web.context.request.async" level="WARN"/>
     <logger name="cn.iocoder.yudao.framework.web.core.handler.GlobalExceptionHandler" level="WARN"/>
     <logger name="org.apache.catalina.connector" level="WARN"/>
+    <logger name="cn.iocoder.yudao.module.aps.dal.mysql" level="DEBUG"/>
     <!-- ========== 方案1配置结束 ========== -->
 
     <!-- 控制台 Appender -->

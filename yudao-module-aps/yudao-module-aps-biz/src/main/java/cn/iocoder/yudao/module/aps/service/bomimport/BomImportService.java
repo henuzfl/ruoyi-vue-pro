@@ -51,5 +51,23 @@ public interface BomImportService {
      * @return 物料BOM导入分页
      */
     PageResult<BomImportDO> getBomImportPage(BomImportPageReqVO pageReqVO);
+    /**
+     * 导入Excel BOM数据到BOM导入表
+     */
+    String importBomFromExcel(byte[] fileData, String fileName, String mainMaterialNo, String plant);
 
+    /**
+     * 从SAP数据导入BOM到BOM导入表
+     */
+    String importBomFromSapData(List<Map<String, Object>> sapBomList, String mainMaterialNo, String plant);
+
+    /**
+     * 清空指定物料的BOM导入数据
+     */
+    void clearBomImportData(String mainMaterialNo, String plant);
+
+    /**
+     * 根据主物料和工厂查询BOM导入数据
+     */
+    List<BomImportDO> getBomImportList(String mainMaterialNo, String plant);
 }

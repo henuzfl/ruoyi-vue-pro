@@ -8,5 +8,42 @@
         代码生成器暂时只生成 Mapper XML 文件本身，更多推荐 MybatisX 快速开发插件来生成查询。
         文档可见：https://www.iocoder.cn/MyBatis/x-plugins/
      -->
+    <!-- 批量插入（使用 INSERT ALL，ID 由序列生成） -->
+    <insert id="batchInsert" parameterType="list">
+        INSERT ALL
+        <foreach collection="list" item="item" index="index">
+            INTO aps_main_plan (
+            id, production_order_no, assembly_material_no, main_material_desc,
+            scheduled_date, scheduled_quantity, production_workshop,
+            create_time, update_time, creator, updater, deleted, tenant_id,completed_quantity
+            ) VALUES (
+            #{item.id}, #{item.productionOrderNo}, #{item.assemblyMaterialNo}, #{item.mainMaterialDesc},
+            #{item.scheduledDate}, #{item.scheduledQuantity}, #{item.productionWorkshop},
+            #{item.createTime}, #{item.updateTime}, #{item.creator}, #{item.updater},
+            0, 1,#{item.completedQuantity}
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
 
+    <!-- 物理删除，根据生产订单号列表 -->
+    <delete id="physicalDeleteByOrderKeys">
+        DELETE FROM aps_main_plan
+        WHERE
+        <foreach collection="list" item="item" separator=" OR " open="(" close=")">
+            (   production_order_no = #{item.productionOrderNo}
+            AND production_workshop = #{item.productionWorkshop}
+            AND TRUNC(scheduled_date) = TRUNC(#{item.scheduledDate})
+            )
+        </foreach>
+    </delete>
+
+    <delete id="physicalDeleteById">
+        DELETE FROM aps_main_plan WHERE id = #{id}
+    </delete>
+
+
+    <delete id="physicalDeleteAll">
+        DELETE FROM aps_main_plan
+    </delete>
 </mapper>

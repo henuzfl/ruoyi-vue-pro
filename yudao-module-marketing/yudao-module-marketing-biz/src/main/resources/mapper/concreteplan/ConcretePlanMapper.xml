@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.marketing.dal.mysql.concreteplan.ConcretePlanMapper">
+
+    <!--
+        一般情况下，尽可能使用 Mapper 进行 CRUD 增删改查即可。
+        无法满足的场景，例如说多表关联查询，才使用 XML 编写 SQL。
+        代码生成器暂时只生成 Mapper XML 文件本身，更多推荐 MybatisX 快速开发插件来生成查询。
+        文档可见：https://www.iocoder.cn/MyBatis/x-plugins/
+     -->
+    <insert id="insertBatchSomeColumn" parameterType="list">
+        INSERT INTO marketing_concrete_plan (
+        id, plan_no, seq_no, meter, model_name, material_name, material_code,
+        prod_no, quantity, struct_serial_no, order_no, batch_no, group_status,
+        leg_type, country_type, plan_issue_time, assembly_start_time, assembly_end_time,
+        debug_time, painting_time, warehouse_time, output_month, special_req,
+        painting_req, exception_note, schedule_time, delivery_req, factory,
+        status, customer, modified_car_no, plate, import_time,
+        creator, create_time, updater, update_time, deleted, tenant_id
+        ) SELECT A.* FROM (
+        <foreach collection="list" item="item" separator="UNION ALL">
+            SELECT
+            #{item.id, jdbcType=BIGINT},
+            #{item.planNo, jdbcType=VARCHAR},
+            #{item.seqNo, jdbcType=VARCHAR},
+            #{item.meter, jdbcType=VARCHAR},
+            #{item.modelName, jdbcType=VARCHAR},
+            #{item.materialName, jdbcType=VARCHAR},
+            #{item.materialCode, jdbcType=VARCHAR},
+            #{item.prodNo, jdbcType=VARCHAR},
+            #{item.quantity, jdbcType=DECIMAL},
+            #{item.structSerialNo, jdbcType=VARCHAR},
+            #{item.orderNo, jdbcType=VARCHAR},
+            #{item.batchNo, jdbcType=VARCHAR},
+            #{item.groupStatus, jdbcType=VARCHAR},
+            #{item.legType, jdbcType=VARCHAR},
+            #{item.countryType, jdbcType=VARCHAR},
+            #{item.planIssueTime, jdbcType=VARCHAR},
+            #{item.assemblyStartTime, jdbcType=TIMESTAMP},
+            #{item.assemblyEndTime, jdbcType=TIMESTAMP},
+            #{item.debugTime, jdbcType=TIMESTAMP},
+            #{item.paintingTime, jdbcType=TIMESTAMP},
+            #{item.warehouseTime, jdbcType=TIMESTAMP},
+            #{item.outputMonth, jdbcType=VARCHAR},
+            #{item.specialReq, jdbcType=VARCHAR},
+            #{item.paintingReq, jdbcType=VARCHAR},
+            #{item.exceptionNote, jdbcType=VARCHAR},
+            #{item.scheduleTime, jdbcType=VARCHAR},
+            #{item.deliveryReq, jdbcType=VARCHAR},
+            #{item.factory, jdbcType=VARCHAR},
+            #{item.status, jdbcType=VARCHAR},
+            #{item.customer, jdbcType=VARCHAR},
+            #{item.modifiedCarNo, jdbcType=VARCHAR},
+            #{item.plate, jdbcType=VARCHAR},
+            #{item.importTime, jdbcType=TIMESTAMP},
+            #{item.creator, jdbcType=VARCHAR},
+            #{item.createTime, jdbcType=TIMESTAMP},
+            #{item.updater, jdbcType=VARCHAR},
+            #{item.updateTime, jdbcType=TIMESTAMP},
+            0,
+            1
+            FROM DUAL
+        </foreach>
+        ) A
+    </insert>
+
+
+    <delete id="deleteByImportTime">
+        DELETE FROM marketing_concrete_plan
+        WHERE import_time = #{importTime}
+    </delete>
+
+</mapper>

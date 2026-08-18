@@ -27,7 +27,7 @@ import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.*;
  * @author 芋道源码
  */
 @Service
-@DS("oracle") // 指定使用 Oracle 数据源
+@DS("oracle")
 @Validated
 @Slf4j
 public class PlanServiceImpl implements PlanService {

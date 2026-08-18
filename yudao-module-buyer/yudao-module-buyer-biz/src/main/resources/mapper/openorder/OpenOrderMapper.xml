@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.buyer.dal.mysql.openorder.OpenOrderMapper">
+
+    <resultMap id="BaseResultMap" type="cn.iocoder.yudao.module.buyer.dal.dataobject.openorder.OpenOrderDO">
+        <id column="id" property="id"/>
+        <result column="order_date" property="orderDate"/>
+        <result column="buyer_order_no" property="buyerOrderNo"/>
+        <result column="line_item" property="lineItem"/>
+        <result column="material_no" property="materialNo"/>
+        <result column="material_desc" property="materialDesc"/>
+        <result column="order_qty" property="orderQty"/>
+        <result column="received_qty" property="receivedQty"/>
+        <result column="open_qty" property="openQty"/>
+        <result column="unit" property="unit"/>
+        <result column="required_arrival_date" property="requiredArrivalDate"/>
+        <result column="actual_arrival_date" property="actualArrivalDate"/>
+        <result column="supplier_desc" property="supplierDesc"/>
+        <result column="customer" property="customer"/>
+        <result column="buyer_group" property="buyerGroup"/>
+        <result column="document_type" property="documentType"/>
+        <result column="production_order_no" property="productionOrderNo"/>
+        <result column="brand_info" property="brandInfo"/>
+        <result column="unit_price" property="unitPrice"/>
+        <result column="supplier_code" property="supplierCode"/>
+        <result column="receiving_warehouse" property="receivingWarehouse"/>
+        <result column="total_amount" property="totalAmount"/>
+        <result column="buyer_req_no" property="buyerReqNo"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+        <result column="creator" property="creator"/>
+        <result column="updater" property="updater"/>
+        <result column="deleted" property="deleted"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, order_date, buyer_order_no, line_item, material_no, material_desc,
+        order_qty, received_qty, open_qty, unit, required_arrival_date, actual_arrival_date,
+        supplier_desc, customer, buyer_group, document_type, production_order_no,
+        brand_info, unit_price, supplier_code, receiving_warehouse, total_amount, buyer_req_no,
+        create_time, update_time, creator, updater, deleted
+    </sql>
+
+    <sql id="Where_Condition">
+        <where>
+            deleted = 0
+            <if test="reqVO.orderDate != null and reqVO.orderDate.length == 2">
+                AND order_date BETWEEN #{reqVO.orderDate[0]} AND #{reqVO.orderDate[1]}
+            </if>
+            <if test="reqVO.buyerOrderNo != null and reqVO.buyerOrderNo != ''">
+                AND buyer_order_no = #{reqVO.buyerOrderNo}
+            </if>
+            <if test="reqVO.lineItem != null">
+                AND line_item = #{reqVO.lineItem}
+            </if>
+            <if test="reqVO.materialNo != null and reqVO.materialNo != ''">
+                AND material_no = #{reqVO.materialNo}
+            </if>
+            <if test="reqVO.materialDesc != null and reqVO.materialDesc != ''">
+                AND material_desc LIKE '%' || #{reqVO.materialDesc} || '%'
+            </if>
+            <if test="reqVO.orderQty != null">
+                AND order_qty = #{reqVO.orderQty}
+            </if>
+            <if test="reqVO.receivedQty != null">
+                AND received_qty = #{reqVO.receivedQty}
+            </if>
+            <if test="reqVO.openQty != null">
+                AND open_qty = #{reqVO.openQty}
+            </if>
+            <if test="reqVO.unit != null and reqVO.unit != ''">
+                AND unit = #{reqVO.unit}
+            </if>
+            <if test="reqVO.requiredArrivalDate != null and reqVO.requiredArrivalDate.length == 2">
+                AND required_arrival_date BETWEEN #{reqVO.requiredArrivalDate[0]} AND #{reqVO.requiredArrivalDate[1]}
+            </if>
+            <if test="reqVO.actualArrivalDate != null and reqVO.actualArrivalDate.length == 2">
+                AND actual_arrival_date BETWEEN #{reqVO.actualArrivalDate[0]} AND #{reqVO.actualArrivalDate[1]}
+            </if>
+            <if test="reqVO.supplierDesc != null and reqVO.supplierDesc != ''">
+                AND supplier_desc = #{reqVO.supplierDesc}
+            </if>
+            <if test="reqVO.customer != null and reqVO.customer != ''">
+                AND customer = #{reqVO.customer}
+            </if>
+            <if test="reqVO.buyerGroup != null and reqVO.buyerGroup != ''">
+                AND buyer_group = #{reqVO.buyerGroup}
+            </if>
+            <if test="reqVO.documentType != null and reqVO.documentType != ''">
+                AND document_type = #{reqVO.documentType}
+            </if>
+            <if test="reqVO.productionOrderNo != null and reqVO.productionOrderNo != ''">
+                AND production_order_no = #{reqVO.productionOrderNo}
+            </if>
+            <if test="reqVO.brandInfo != null and reqVO.brandInfo != ''">
+                AND brand_info = #{reqVO.brandInfo}
+            </if>
+            <if test="reqVO.unitPrice != null">
+                AND unit_price = #{reqVO.unitPrice}
+            </if>
+            <if test="reqVO.supplierCode != null and reqVO.supplierCode != ''">
+                AND supplier_code = #{reqVO.supplierCode}
+            </if>
+            <if test="reqVO.receivingWarehouse != null and reqVO.receivingWarehouse != ''">
+                AND receiving_warehouse = #{reqVO.receivingWarehouse}
+            </if>
+            <if test="reqVO.totalAmount != null">
+                AND total_amount = #{reqVO.totalAmount}
+            </if>
+            <if test="reqVO.buyerReqNo != null and reqVO.buyerReqNo != ''">
+                AND buyer_req_no = #{reqVO.buyerReqNo}
+            </if>
+            <if test="reqVO.createTime != null and reqVO.createTime.length == 2">
+                AND create_time BETWEEN #{reqVO.createTime[0]} AND #{reqVO.createTime[1]}
+            </if>
+        </where>
+    </sql>
+
+    <!-- 分页查询列表（Oracle 使用 ROW_NUMBER） -->
+    <select id="selectPageList" resultMap="BaseResultMap">
+        SELECT * FROM (
+        SELECT ROWNUM rn, t.* FROM (
+        SELECT <include refid="Base_Column_List"/>
+        FROM buyer_open_order
+        <include refid="Where_Condition"/>
+        ORDER BY id DESC
+        ) t
+        WHERE ROWNUM &lt;= #{offset} + #{limit}
+        ) WHERE rn > #{offset}
+    </select>
+
+    <!-- 查询总条数 -->
+    <select id="selectPageCount" resultType="long">
+        SELECT COUNT(*)
+        FROM buyer_open_order
+        <include refid="Where_Condition"/>
+    </select>
+
+</mapper>

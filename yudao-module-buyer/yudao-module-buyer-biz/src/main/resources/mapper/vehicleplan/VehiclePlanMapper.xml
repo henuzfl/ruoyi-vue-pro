@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.buyer.dal.mysql.vehicleplan.VehiclePlanMapper">
+
+    <!-- 批量插入 -->
+    <!-- 批量插入（使用 INSERT ALL 语法，兼容 Oracle） -->
+    <insert id="batchInsert">
+        INSERT ALL
+        <foreach collection="list" item="item" index="index">
+            INTO buyer_vehicle_plan (
+            id, import_date, product_line, product_model, vehicle_code,
+            seq_no2025, seq_no2026, vin, bare_machine_order_no, driving_unit_order_no,
+            trade_type, unit_quantity, blanking_plan_date, boom_leg_plan_date,
+            boom_top_bottom_plan_date, turntable_plan_date, frame_plan_date,
+            chassis_online_plan_date, finished_product_plan_date,
+            create_time, update_time, creator, updater, deleted, tenant_id
+            ) VALUES (
+            #{item.id, jdbcType=NUMERIC},
+            #{item.importDate, jdbcType=DATE},
+            #{item.productLine, jdbcType=VARCHAR},
+            #{item.productModel, jdbcType=VARCHAR},
+            #{item.vehicleCode, jdbcType=VARCHAR},
+            #{item.seqNo2025, jdbcType=VARCHAR},
+            #{item.seqNo2026, jdbcType=VARCHAR},
+            #{item.vin, jdbcType=VARCHAR},
+            #{item.bareMachineOrderNo, jdbcType=VARCHAR},
+            #{item.drivingUnitOrderNo, jdbcType=VARCHAR},
+            #{item.tradeType, jdbcType=VARCHAR},
+            #{item.unitQuantity, jdbcType=NUMERIC},
+            #{item.blankingPlanDate, jdbcType=VARCHAR},
+            #{item.boomLegPlanDate, jdbcType=VARCHAR},
+            #{item.boomTopBottomPlanDate, jdbcType=VARCHAR},
+            #{item.turntablePlanDate, jdbcType=VARCHAR},
+            #{item.framePlanDate, jdbcType=VARCHAR},
+            #{item.chassisOnlinePlanDate, jdbcType=DATE},
+            #{item.finishedProductPlanDate, jdbcType=DATE},
+            #{item.createTime, jdbcType=TIMESTAMP},
+            #{item.updateTime, jdbcType=TIMESTAMP},
+            #{item.creator, jdbcType=VARCHAR},
+            #{item.updater, jdbcType=VARCHAR},
+            0,
+            1
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+    <!-- 根据裸机订单号列表物理删除 -->
+    <delete id="deleteByBareMachineOrderNos">
+        DELETE FROM buyer_vehicle_plan
+        WHERE bare_machine_order_no IN
+        <foreach collection="orderNos" item="orderNo" open="(" separator="," close=")">
+            #{orderNo}
+        </foreach>
+    </delete>
+
+    <delete id="deleteByImportDate">
+        DELETE FROM buyer_vehicle_plan
+        WHERE import_date = #{importDate}
+    </delete>
+
+    <delete id="physicalDeleteById">
+        DELETE FROM buyer_vehicle_plan
+        WHERE id = #{id}
+    </delete>
+</mapper>

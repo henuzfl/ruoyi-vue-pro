@@ -6,8 +6,11 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
 import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
 import cn.iocoder.yudao.module.wm.dal.dataobject.orderdemand.OrderDemandDO;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
 import org.apache.ibatis.annotations.Mapper;
 import cn.iocoder.yudao.module.wm.controller.admin.orderdemand.vo.*;
+import cn.iocoder.yudao.module.wm.controller.admin.orderdemand.vo.OrderDemandKey;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 订单追溯需求 Mapper
@@ -31,5 +34,19 @@ public interface OrderDemandMapper extends BaseMapperX<OrderDemandDO> {
                 .betweenIfPresent(OrderDemandDO::getCreateTime, reqVO.getCreateTime())
                 .orderByDesc(OrderDemandDO::getId));
     }
+    /**
+     * 根据订单号组合批量物理删除
+     * @param keys 键列表
+     * @return 删除行数
+     */
+    int deleteByOrderNoAndMaterialNos(@Param("keys") List<OrderDemandKey> keys);
+
+    /**
+     * 批量插入
+     * @param list 数据列表
+     */
+    @InterceptorIgnore(tenantLine = "true")
+    void batchInsert(@Param("list") List<OrderDemandDO> list);
+
 
 }

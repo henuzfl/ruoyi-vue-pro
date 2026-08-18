@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.marketing.dal.mysql.scissorliftwplan.ScissorLiftWplanMapper">
+
+    <!-- 批量插入（Oracle 使用 INSERT ALL 语法） -->
+    <insert id="insertBatchSomeColumn" parameterType="list">
+        INSERT ALL
+        <foreach collection="list" item="item" separator=" ">
+            INTO marketing_aerial_boom_wplan (
+            id, product_line, precise_model, product_model, precise_bom,
+            plan_date, week_no, week_start_date, week_end_date,
+            daily_quantity, car_number_range, production_line_type,
+            plate, import_time, creator, create_time, updater, update_time, deleted, tenant_id
+            ) VALUES (
+            #{item.id, jdbcType=BIGINT},
+            #{item.productLine, jdbcType=VARCHAR},
+            #{item.preciseModel, jdbcType=VARCHAR},
+            #{item.productModel, jdbcType=VARCHAR},
+            #{item.preciseBom, jdbcType=VARCHAR},
+            #{item.planDate, jdbcType=TIMESTAMP},
+            #{item.weekNo, jdbcType=VARCHAR},
+            #{item.weekStartDate, jdbcType=TIMESTAMP},
+            #{item.weekEndDate, jdbcType=TIMESTAMP},
+            #{item.dailyQuantity, jdbcType=INTEGER},
+            #{item.carNumberRange, jdbcType=VARCHAR},
+            #{item.productionLineType, jdbcType=VARCHAR},
+            #{item.plate, jdbcType=VARCHAR},
+            #{item.importTime, jdbcType=TIMESTAMP},
+            #{item.creator, jdbcType=VARCHAR},
+            #{item.createTime, jdbcType=TIMESTAMP},
+            #{item.updater, jdbcType=VARCHAR},
+            #{item.updateTime, jdbcType=TIMESTAMP},
+            0,
+            1
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+</mapper>

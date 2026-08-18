@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.wm.dal.mysql.sapordersync.SapOrderSyncMapper">
+
+    <delete id="deleteByProductionOrderNos">
+        DELETE FROM sub_order
+        WHERE production_order_no IN
+        <foreach collection="orderNos" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <insert id="batchInsert" parameterType="list">
+        INSERT ALL
+        <foreach collection="list" item="item">
+            INTO sub_order (
+            id, production_order_no, assembly_material_no, main_material_desc,
+            component_order_type, scheduled_quantity, delivered_quantity,
+            creation_date, created_by, system_status, scheduled_date,
+            actual_start_time, basic_end_date, plant, mrp_controller,
+            production_workshop, unit_of_measure, production_version,
+            actual_end_date, process_start_date, submit_date, process_released,
+            central_proc, change_date, last_changed_by, order_category,
+            sales_order, description, confirmed_quantity,
+            create_time, update_time, creator, updater, deleted, tenant_id
+            ) VALUES (
+            #{item.id, jdbcType=VARCHAR},
+            #{item.productionOrderNo, jdbcType=VARCHAR},
+            #{item.assemblyMaterialNo, jdbcType=VARCHAR},
+            #{item.mainMaterialDesc, jdbcType=VARCHAR},
+            #{item.componentOrderType, jdbcType=VARCHAR},
+            #{item.scheduledQuantity, jdbcType=NUMERIC},
+            #{item.deliveredQuantity, jdbcType=NUMERIC},
+            #{item.creationDate, jdbcType=TIMESTAMP},
+            #{item.createdBy, jdbcType=VARCHAR},
+            #{item.systemStatus, jdbcType=VARCHAR},
+            #{item.scheduledDate, jdbcType=TIMESTAMP},
+            #{item.actualStartTime, jdbcType=TIMESTAMP},
+            #{item.basicEndDate, jdbcType=TIMESTAMP},
+            #{item.plant, jdbcType=VARCHAR},
+            #{item.mrpController, jdbcType=VARCHAR},
+            #{item.productionWorkshop, jdbcType=VARCHAR},
+            #{item.unitOfMeasure, jdbcType=VARCHAR},
+            #{item.productionVersion, jdbcType=VARCHAR},
+            #{item.actualEndDate, jdbcType=TIMESTAMP},
+            #{item.processStartDate, jdbcType=TIMESTAMP},
+            #{item.submitDate, jdbcType=TIMESTAMP},
+            #{item.processReleased, jdbcType=VARCHAR},
+            #{item.centralProc, jdbcType=VARCHAR},
+            #{item.changeDate, jdbcType=TIMESTAMP},
+            #{item.lastChangedBy, jdbcType=VARCHAR},
+            #{item.orderCategory, jdbcType=VARCHAR},
+            #{item.salesOrder, jdbcType=VARCHAR},
+            #{item.description, jdbcType=VARCHAR},
+            #{item.confirmedQuantity, jdbcType=NUMERIC},
+            #{item.createTime, jdbcType=TIMESTAMP},
+            #{item.updateTime, jdbcType=TIMESTAMP},
+            #{item.creator, jdbcType=VARCHAR},
+            #{item.updater, jdbcType=VARCHAR},
+            0,
+            1
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+</mapper>

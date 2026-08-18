@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.aps.dal.mysql.assemblyorderprogress.AssemblyOrderProgressMapper">
+
+    <!-- 动态分组字段 -->
+    <sql id="groupByClause">
+        <choose>
+            <when test="reqVO.dimension == 'day'">
+                TO_CHAR(m.schedule_time, 'YYYY-MM-DD')
+            </when>
+            <when test="reqVO.dimension == 'week'">
+                TO_CHAR(m.schedule_time, 'YYYY-"W"IW')
+            </when>
+            <when test="reqVO.dimension == 'month'">
+                TO_CHAR(m.schedule_time, 'YYYY-MM')
+            </when>
+            <otherwise>
+                TO_CHAR(m.schedule_time, 'YYYY-"W"IW')
+            </otherwise>
+        </choose>
+    </sql>
+
+    <!-- 公共查询条件 -->
+    <sql id="whereCondition">
+        <where>
+            m.deleted = 0
+            <if test="reqVO.startDate != null and reqVO.startDate != ''">
+                AND m.schedule_time >= TO_DATE(#{reqVO.startDate}, 'YYYY-MM-DD')
+            </if>
+            <if test="reqVO.endDate != null and reqVO.endDate != ''">
+                AND m.schedule_time <![CDATA[ < ]]> TO_DATE(#{reqVO.endDate}, 'YYYY-MM-DD') + 1
+            </if>
+            <if test="reqVO.materialCode != null and reqVO.materialCode != ''">
+                AND m.material_code LIKE '%' || #{reqVO.materialCode} || '%'
+            </if>
+            <if test="reqVO.materialDesc != null and reqVO.materialDesc != ''">
+                AND m.material_desc LIKE '%' || #{reqVO.materialDesc} || '%'
+            </if>
+            <if test="reqVO.workshop != null and reqVO.workshop != ''">
+                AND m.workshop = #{reqVO.workshop}
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectPage" resultType="cn.iocoder.yudao.module.aps.controller.admin.assemblyorderprogress.vo.AssemblyOrderProgressRespVO">
+        WITH
+        -- 1. 总成层去重（按总成物料 + 日期天）
+        assembly_base AS (
+        SELECT
+        material_code,
+        MAX(material_desc) AS material_desc,
+        TRUNC(schedule_time) AS schedule_date,
+        MAX(quantity) AS quantity,
+        MAX(completed_quantity) AS completed_quantity,
+        MAX(stock) AS stock
+        FROM aps_matching_result m
+        <include refid="whereCondition"/>
+        GROUP BY material_code, TRUNC(schedule_time)
+        ),
+        -- 2. 采购件层统计缺口子件数（按总成 + 日期天）
+        shortage_count AS (
+        SELECT
+        material_code,
+        TRUNC(schedule_time) AS schedule_date,
+        COUNT(DISTINCT CASE WHEN open_order_quantity > 0 THEN purchase_material END) AS shortageCount
+        FROM aps_matching_result m
+        <include refid="whereCondition"/>
+        GROUP BY material_code, TRUNC(schedule_time)
+        )
+        -- 3. 按维度聚合（日/周/月）
+        SELECT
+        a.material_code AS materialCode,
+        MAX(a.material_desc) AS materialDesc,
+        <choose>
+            <when test="reqVO.dimension == 'day'">
+                TO_CHAR(a.schedule_date, 'YYYY-MM-DD')
+            </when>
+            <when test="reqVO.dimension == 'week'">
+                TO_CHAR(a.schedule_date, 'YYYY-"W"IW')
+            </when>
+            <when test="reqVO.dimension == 'month'">
+                TO_CHAR(a.schedule_date, 'YYYY-MM')
+            </when>
+            <otherwise>
+                TO_CHAR(a.schedule_date, 'YYYY-"W"IW')
+            </otherwise>
+        </choose> AS timeDimension,
+        SUM(a.quantity) AS planQty,
+        SUM(a.completed_quantity) AS completedQty,
+        MAX(a.stock) AS stockQty,
+        NVL(MAX(s.shortageCount), 0) AS shortageCount   -- Oracle 10g 兼容空值转0
+        FROM assembly_base a
+        LEFT JOIN shortage_count s
+        ON a.material_code = s.material_code
+        AND a.schedule_date = s.schedule_date
+        GROUP BY a.material_code,
+        <choose>
+            <when test="reqVO.dimension == 'day'">
+                TO_CHAR(a.schedule_date, 'YYYY-MM-DD')
+            </when>
+            <when test="reqVO.dimension == 'week'">
+                TO_CHAR(a.schedule_date, 'YYYY-"W"IW')
+            </when>
+            <when test="reqVO.dimension == 'month'">
+                TO_CHAR(a.schedule_date, 'YYYY-MM')
+            </when>
+            <otherwise>
+                TO_CHAR(a.schedule_date, 'YYYY-"W"IW')
+            </otherwise>
+        </choose>
+        ORDER BY timeDimension DESC, materialCode
+    </select>
+
+    <select id="selectExportList" resultType="cn.iocoder.yudao.module.aps.controller.admin.assemblyorderprogress.vo.AssemblyOrderProgressRespVO">
+        WITH assembly_base AS (
+        SELECT
+        material_code,
+        MAX(material_desc) AS material_desc,
+        TRUNC(schedule_time) AS schedule_date,
+        MAX(quantity) AS quantity,
+        MAX(completed_quantity) AS completed_quantity,
+        MAX(stock) AS stock
+        FROM aps_matching_result m
+        <include refid="whereCondition"/>
+        GROUP BY material_code, TRUNC(schedule_time)
+        )
+        SELECT
+        a.material_code AS materialCode,
+        MAX(a.material_desc) AS materialDesc,
+        <choose>
+            <when test="reqVO.dimension == 'day'">TO_CHAR(a.schedule_date, 'YYYY-MM-DD')</when>
+            <when test="reqVO.dimension == 'week'">TO_CHAR(a.schedule_date, 'YYYY-"W"IW')</when>
+            <when test="reqVO.dimension == 'month'">TO_CHAR(a.schedule_date, 'YYYY-MM')</when>
+            <otherwise>TO_CHAR(a.schedule_date, 'YYYY-"W"IW')</otherwise>
+        </choose> AS timeDimension,
+        SUM(a.quantity) AS planQty,
+        SUM(a.completed_quantity) AS completedQty,
+        MAX(a.stock) AS stockQty
+        FROM assembly_base a
+        GROUP BY a.material_code,
+        <choose>
+            <when test="reqVO.dimension == 'day'">TO_CHAR(a.schedule_date, 'YYYY-MM-DD')</when>
+            <when test="reqVO.dimension == 'week'">TO_CHAR(a.schedule_date, 'YYYY-"W"IW')</when>
+            <when test="reqVO.dimension == 'month'">TO_CHAR(a.schedule_date, 'YYYY-MM')</when>
+            <otherwise>TO_CHAR(a.schedule_date, 'YYYY-"W"IW')</otherwise>
+        </choose>
+        ORDER BY timeDimension DESC, materialCode
+    </select>
+
+    <select id="selectShortages" resultType="cn.iocoder.yudao.module.aps.controller.admin.assemblyorderprogress.vo.AssemblyOrderShortageRespVO">
+        SELECT
+        purchase_material,
+        purchase_material_desc,
+        open_order_quantity AS shortageQty,
+        TO_CHAR(required_delivery_date, 'YYYY-MM-DD') AS expectedDate,
+        supplier_name,
+        schedule_time
+        FROM aps_matching_result
+        WHERE deleted = 0
+        AND material_code = #{materialCode}
+        AND open_order_quantity > 0
+        <if test="scheduleTime != null and scheduleTime != ''">
+            AND TO_CHAR(schedule_time, 'YYYY-MM-DD') = #{scheduleTime}
+        </if>
+        ORDER BY purchase_material
+    </select>
+
+    <select id="selectShortagesByDateRange" resultType="cn.iocoder.yudao.module.aps.controller.admin.assemblyorderprogress.vo.AssemblyOrderShortageRespVO">
+        SELECT
+        purchase_material,
+        purchase_material_desc,
+        SUM(open_order_quantity) AS shortageQty,
+        TO_CHAR(required_delivery_date, 'YYYY-MM-DD') AS expectedDate,
+        supplier_name,
+        schedule_time
+        FROM aps_matching_result
+        WHERE deleted = 0
+        AND material_code = #{materialCode}
+        AND open_order_quantity > 0
+        <if test="startDate != null and startDate != ''">
+            AND schedule_time >= TO_DATE(#{startDate}, 'YYYY-MM-DD')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND schedule_time <![CDATA[ < ]]> TO_DATE(#{endDate}, 'YYYY-MM-DD') + 1
+        </if>
+        GROUP BY purchase_material,purchase_material_desc,required_delivery_date,supplier_name,schedule_time
+        ORDER BY purchase_material
+    </select>
+</mapper>

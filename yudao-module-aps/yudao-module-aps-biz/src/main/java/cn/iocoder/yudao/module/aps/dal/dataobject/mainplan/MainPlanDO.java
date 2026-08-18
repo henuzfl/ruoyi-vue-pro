@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.aps.dal.dataobject.mainplan;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 import java.util.*;
 import java.math.BigDecimal;
@@ -24,12 +25,13 @@ import cn.iocoder.yudao.framework.mybatis.core.dataobject.BaseDO;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties(value = {"handler", "hibernateLazyInitializer", "createUser", "updateUser"})
 public class MainPlanDO extends BaseDO {
 
     /**
      * 主键ID
      */
-    @TableId
+    @TableId(value = "id", type = IdType.INPUT)
     private BigDecimal id;
     /**
      * 生产订单号
@@ -55,5 +57,10 @@ public class MainPlanDO extends BaseDO {
      * 生产车间
      */
     private String productionWorkshop;
+    /**
+     * 已排产数量
+     */
+    private BigDecimal completedQuantity;
+
 
 }

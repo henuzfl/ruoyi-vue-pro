@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.aps.dal.mysql.mainplancomponentprogressreport.MainPlanComponentProgressReportMapper">
+
+    <sql id="baseQuery">
+        SELECT
+            a.PRODUCTION_ORDER_NO AS productionOrderNo,
+            a.ASSEMBLY_MATERIAL_NO AS assemblyMaterialNo,
+            b.COMPONENT_MATERIAL_NO AS componentMaterialNo,
+            e.MATERIAL_DESC AS materialDesc,
+            a.PRODUCTION_WORKSHOP AS productionWorkshop,
+            e.PROCUREMENT_TYPE as procurementType,
+            SUM(b.UNIT_USAGE) * SUM(a.SCHEDULED_QUANTITY) AS totalRequirement,
+            f.STOCK_QUANTITY AS stockQuantity,
+            g.orderQuantity AS orderQuantity,
+            h.openPoQuantity AS openPoQuantity,
+            /**CASE  WHEN (SUM(b.UNIT_USAGE) * SUM(a.SCHEDULED_QUANTITY) - nvl(f.STOCK_QUANTITY,0) - nvl(g.orderQuantity,0) - nvl(h.openPoQuantity,0))>=0 then '不满足' ELSE '不满足' END AS satisfy,**/
+            NULL AS materialPreparation,
+            h.supplier AS supplier
+            FROM aps_main_plan a
+            LEFT JOIN material_bom_import b ON a.ASSEMBLY_MATERIAL_NO = b.MAIN_MATERIAL_NO
+            LEFT JOIN material_master_import e ON b.COMPONENT_MATERIAL_NO = e.MATERIAL_NO
+            LEFT JOIN (
+            SELECT MATERIAL_NO, SUM(STOCK_QUANTITY) AS STOCK_QUANTITY
+            FROM real_time_stock
+            GROUP BY MATERIAL_NO
+            ) f ON b.COMPONENT_MATERIAL_NO = f.MATERIAL_NO
+            LEFT JOIN (
+            SELECT ASSEMBLY_MATERIAL_NO,SUM(SCHEDULED_QUANTITY - DELIVERED_QUANTITY) as orderQuantity FROM SUB_ORDER
+            WHERE SYSTEM_STATUS LIKE 'CRTD%' OR SYSTEM_STATUS LIKE 'REL%'
+            GROUP BY ASSEMBLY_MATERIAL_NO ORDER BY ASSEMBLY_MATERIAL_NO
+            ) g on g.ASSEMBLY_MATERIAL_NO = b.COMPONENT_MATERIAL_NO
+            left join (
+            SELECT MATERIAL_NO,sum(ORDER_QTY-RECEIVED_QTY) as openPoQuantity,max(SUPPLIER_DESC) as supplier FROM BUYER_OPEN_ORDER GROUP BY MATERIAL_NO
+            ) h on h.MATERIAL_NO = b.COMPONENT_MATERIAL_NO
+            WHERE a.DELETED = 0
+            <if test="assemblyMaterialNo != null and assemblyMaterialNo != ''">
+                AND a.ASSEMBLY_MATERIAL_NO = #{assemblyMaterialNo}
+            </if>
+            <if test="componentMaterialNo != null and componentMaterialNo != ''">
+                AND b.COMPONENT_MATERIAL_NO = #{componentMaterialNo}
+            </if>
+            <if test="materialDesc != null and materialDesc != ''">
+                AND e.MATERIAL_DESC LIKE CONCAT('%', #{materialDesc}, '%')
+            </if>
+            <if test="productionWorkshop != null and productionWorkshop != ''">
+                AND a.PRODUCTION_WORKSHOP = #{productionWorkshop}
+            </if>
+            <if test="scheduledDateStart != null">
+                AND a.SCHEDULED_DATE >= #{scheduledDateStart}
+            </if>
+            <if test="scheduledDateEnd != null">
+                AND a.SCHEDULED_DATE &lt;= #{scheduledDateEnd}
+            </if>
+            GROUP BY a.ASSEMBLY_MATERIAL_NO, b.COMPONENT_MATERIAL_NO, e.MATERIAL_DESC, a.PRODUCTION_WORKSHOP, f.STOCK_QUANTITY,e.PROCUREMENT_TYPE,g.orderQuantity,h.openPoQuantity,h.supplier,a.PRODUCTION_ORDER_NO
+        </sql>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*)
+        FROM (
+        <include refid="baseQuery" />
+        ) t
+    </select>
+
+    <select id="selectPage" resultType="cn.iocoder.yudao.module.aps.controller.admin.mainplancomponentprogressreport.vo.MainPlanComponentProgressReportRespVO">
+        SELECT * FROM (
+        SELECT t.*, ROWNUM AS rn FROM (
+        <include refid="baseQuery" />
+        ) t
+        WHERE ROWNUM <![CDATA[ <= ]]> (#{pageNo} * #{pageSize})
+        ) t2
+        WHERE t2.rn <![CDATA[ > ]]> ((#{pageNo} - 1) * #{pageSize})
+    </select>
+
+</mapper>

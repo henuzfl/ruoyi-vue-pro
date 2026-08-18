@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.aps.dal.mysql.purchasefeedback.PurchaseFeedbackMapper">
+
+    <insert id="batchInsert" parameterType="list">
+        INSERT INTO aps_purchase_feedback (
+        id, order_no, schedule_time, purchase_material, feedback_remark,
+        create_time, update_time, creator, updater, tenant_id
+        )
+        <foreach collection="list" item="item" separator="UNION ALL">
+            SELECT
+            #{item.id, jdbcType=NUMERIC},
+            #{item.orderNo, jdbcType=VARCHAR},
+            #{item.scheduleTime, jdbcType=DATE},
+            #{item.purchaseMaterial, jdbcType=VARCHAR},
+            #{item.feedbackRemark, jdbcType=VARCHAR},
+            SYSDATE,
+            SYSDATE,
+            #{item.creator, jdbcType=VARCHAR},
+            #{item.updater, jdbcType=VARCHAR},
+            1
+            FROM DUAL
+        </foreach>
+    </insert>
+
+</mapper>

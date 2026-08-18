@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.buyer.dal.mysql.vehicleconfig.VehicleConfigMapper">
+
+    <!-- 批量删除：基于 (vehicle_model, seq_no_2026) 组合 -->
+    <delete id="deleteByModelAndSeq">
+        DELETE FROM buyer_vehicle_config
+        WHERE (vehicle_model, seq_no_2026) IN
+        <foreach collection="keys" item="key" open="(" separator="," close=")">
+            (#{key.vehicleModel}, #{key.seqNo2026})
+        </foreach>
+    </delete>
+
+<!--    <select id="selectPage" resultType="cn.iocoder.yudao.module.buyer.dal.dataobject.vehicleconfig.VehicleConfigDO">-->
+<!--        SELECT-->
+<!--        id, order_no, vehicle_model, seq_no_2025, seq_no_2026,-->
+<!--        required_arrival_time, material_desc, quota1, quota2,-->
+<!--        material_no, factory, required_quantity, delivered_quantity,-->
+<!--        create_time, update_time, import_date-->
+<!--        FROM buyer_vehicle_config-->
+<!--        WHERE deleted = 0-->
+<!--        <if test="vehicleModel != null and vehicleModel != ''">-->
+<!--            AND vehicle_model = #{vehicleModel}-->
+<!--        </if>-->
+<!--        <if test="seqNo2026 != null and seqNo2026 != ''">-->
+<!--            AND seq_no_2026 = #{seqNo2026}-->
+<!--        </if>-->
+<!--        <if test="materialNo != null and materialNo != ''">-->
+<!--            AND material_no = #{materialNo}-->
+<!--        </if>-->
+<!--        <if test="orderNo != null and orderNo != ''">-->
+<!--            AND order_no = #{orderNo}-->
+<!--        </if>-->
+<!--        <if test="factory != null and factory != ''">-->
+<!--            AND factory = #{factory}-->
+<!--        </if>-->
+<!--        <if test="createTime != null and createTime.length == 2">-->
+<!--            AND create_time BETWEEN #{createTime[0]} AND #{createTime[1]}-->
+<!--        </if>-->
+<!--        ORDER BY import_date,vehicle_model ASC, seq_no_2026 ASC-->
+<!--    </select>-->
+
+    <!-- 批量插入 -->
+    <insert id="batchInsert">
+        INSERT ALL
+        <foreach collection="list" item="item" index="index">
+            INTO buyer_vehicle_config (
+            id, order_no, vehicle_model, seq_no_2025, seq_no_2026,
+            required_arrival_time, material_desc, quota1, quota2,
+            material_no, factory, required_quantity, delivered_quantity,
+            create_time, update_time, creator, updater, deleted, tenant_id,import_date
+            ) VALUES (
+            #{item.id, jdbcType=NUMERIC},
+            #{item.orderNo, jdbcType=VARCHAR},
+            #{item.vehicleModel, jdbcType=VARCHAR},
+            #{item.seqNo2025, jdbcType=VARCHAR},
+            #{item.seqNo2026, jdbcType=VARCHAR},
+            #{item.requiredArrivalTime, jdbcType=VARCHAR},
+            #{item.materialDesc, jdbcType=VARCHAR},
+            #{item.quota1, jdbcType=NUMERIC},
+            #{item.quota2, jdbcType=NUMERIC},
+            #{item.materialNo, jdbcType=VARCHAR},
+            #{item.factory, jdbcType=VARCHAR},
+            #{item.requiredQuantity, jdbcType=NUMERIC},
+            #{item.deliveredQuantity, jdbcType=NUMERIC},
+            #{item.createTime, jdbcType=TIMESTAMP},
+            #{item.updateTime, jdbcType=TIMESTAMP},
+            #{item.creator, jdbcType=VARCHAR},
+            #{item.updater, jdbcType=VARCHAR},
+            0,
+            1,
+            #{item.importDate, jdbcType=DATE}
+            )
+        </foreach>
+        SELECT 1 FROM DUAL
+    </insert>
+
+    <delete id="deleteByImportDate">
+        DELETE FROM buyer_vehicle_config
+        WHERE import_date = #{importDate}
+    </delete>
+
+</mapper>

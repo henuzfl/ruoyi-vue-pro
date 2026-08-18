@@ -6,8 +6,10 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.mybatis.core.query.LambdaQueryWrapperX;
 import cn.iocoder.yudao.framework.mybatis.core.mapper.BaseMapperX;
 import cn.iocoder.yudao.module.buyer.dal.dataobject.buyertimestock.buyerTimeStockDO;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import cn.iocoder.yudao.module.buyer.controller.admin.buyertimestock.vo.*;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * 实时库存 Mapper
@@ -28,6 +30,20 @@ public interface buyerTimeStockMapper extends BaseMapperX<buyerTimeStockDO> {
                 .eqIfPresent(buyerTimeStockDO::getRemark, reqVO.getRemark())
                 .betweenIfPresent(buyerTimeStockDO::getCreateTime, reqVO.getCreateTime())
                 .orderByDesc(buyerTimeStockDO::getId));
+    }
+
+
+    /**
+     * 物理删除全部库存数据
+     */
+    @Delete("DELETE FROM REAL_TIME_STOCK")
+    int physicalDeleteAll();
+
+    /**
+     * 删除全部库存数据（物理删除）
+     */
+    default int deleteAll() {
+        return physicalDeleteAll();
     }
 
 }
