@@ -8,6 +8,8 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
@@ -39,6 +41,8 @@ import org.springframework.util.CollectionUtils;
 @Slf4j
 public class VehiclePlanServiceImpl implements VehiclePlanService {
 
+    private static final Pattern PLAN_DATE_PATTERN = Pattern.compile("([0-9]{4})\\D+([0-9]{1,2})");
+
     @Resource
     private VehiclePlanMapper vehiclePlanMapper;
 
@@ -46,6 +50,7 @@ public class VehiclePlanServiceImpl implements VehiclePlanService {
     public BigDecimal createVehiclePlan(VehiclePlanSaveReqVO createReqVO) {
         // 插入
         VehiclePlanDO vehiclePlan = BeanUtils.toBean(createReqVO, VehiclePlanDO.class);
+        vehiclePlan.setPlanMonth(calculatePlanMonth(vehiclePlan));
         vehiclePlanMapper.insert(vehiclePlan);
         // 返回
         return vehiclePlan.getId();
@@ -57,6 +62,7 @@ public class VehiclePlanServiceImpl implements VehiclePlanService {
         validateVehiclePlanExists(updateReqVO.getId());
         // 更新
         VehiclePlanDO updateObj = BeanUtils.toBean(updateReqVO, VehiclePlanDO.class);
+        updateObj.setPlanMonth(calculatePlanMonth(updateObj));
         vehiclePlanMapper.updateById(updateObj);
     }
 
@@ -157,6 +163,8 @@ public class VehiclePlanServiceImpl implements VehiclePlanService {
             entity.setFramePlanDate(vo.getFramePlanDate());
             entity.setChassisOnlinePlanDate(vo.getChassisOnlinePlanDate());
             entity.setFinishedProductPlanDate(vo.getFinishedProductPlanDate());
+            // 月净需求查询直接使用标准化月份，避免查询时逐行解析日期字符串。
+            entity.setPlanMonth(calculatePlanMonth(entity));
 
             saveList.add(entity);
         }
@@ -220,5 +228,27 @@ public class VehiclePlanServiceImpl implements VehiclePlanService {
             } catch (DateTimeParseException ignored) {}
         }
         throw new IllegalArgumentException("导入日期格式错误，支持格式：yyyy-MM-dd、yyyy/M/d、yyyy-M-d 等，例如 2026-04-02 或 2026/4/2");
+    }
+
+    /**
+     * 沿用需求对比日期优先级计算计划月份：臂架上下线计划日期、转台计划日期、成台完工日期。
+     */
+    private String calculatePlanMonth(VehiclePlanDO plan) {
+        String preferredDate = validPlanDate(plan.getBoomTopBottomPlanDate())
+                ? plan.getBoomTopBottomPlanDate() : plan.getTurntablePlanDate();
+        if (validPlanDate(preferredDate)) {
+            Matcher matcher = PLAN_DATE_PATTERN.matcher(preferredDate.trim());
+            if (matcher.find()) {
+                return matcher.group(1) + "-" + String.format("%02d", Integer.parseInt(matcher.group(2)));
+            }
+            // 高优先级字段有值但格式无效时不降级，保持与原查询 CASE 逻辑一致。
+            return null;
+        }
+        return plan.getFinishedProductPlanDate() == null ? null
+                : YearMonth.from(plan.getFinishedProductPlanDate()).toString();
+    }
+
+    private boolean validPlanDate(String value) {
+        return StringUtils.hasText(value) && !"/".equals(value.trim());
     }
 }

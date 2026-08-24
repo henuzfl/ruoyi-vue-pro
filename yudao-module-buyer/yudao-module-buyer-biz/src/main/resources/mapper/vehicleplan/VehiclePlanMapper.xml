@@ -8,7 +8,7 @@
         INSERT ALL
         <foreach collection="list" item="item" index="index">
             INTO buyer_vehicle_plan (
-            id, import_date, product_line, product_model, vehicle_code,
+            id, import_date, plan_month, product_line, product_model, vehicle_code,
             seq_no2025, seq_no2026, vin, bare_machine_order_no, driving_unit_order_no,
             trade_type, unit_quantity, blanking_plan_date, boom_leg_plan_date,
             boom_top_bottom_plan_date, turntable_plan_date, frame_plan_date,
@@ -17,6 +17,7 @@
             ) VALUES (
             #{item.id, jdbcType=NUMERIC},
             #{item.importDate, jdbcType=DATE},
+            #{item.planMonth, jdbcType=VARCHAR},
             #{item.productLine, jdbcType=VARCHAR},
             #{item.productModel, jdbcType=VARCHAR},
             #{item.vehicleCode, jdbcType=VARCHAR},

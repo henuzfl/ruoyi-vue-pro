@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.buyer.dal.mysql.monthlynetdemand.MonthlyNetDemandMapper">
+    <!-- 计划月份在导入时预先计算，避免查询阶段对日期字符串逐行执行正则。 -->
+    <select id="selectPlanRows" resultType="cn.iocoder.yudao.module.buyer.dal.dataobject.monthlynetdemand.MonthlyDemandPlanRow">
+        SELECT product_model, seq_no2026, unit_quantity
+        FROM buyer_vehicle_plan p
+        WHERE p.deleted = 0
+          AND p.import_date = (SELECT MAX(import_date) FROM buyer_vehicle_plan WHERE deleted = 0)
+          AND p.plan_month = #{planMonth}
+    </select>
+
+    <select id="selectConfigVersion" resultType="java.lang.String">
+        SELECT NVL(TO_CHAR(MAX(import_date), 'YYYYMMDDHH24MISS'), 'EMPTY')
+        FROM buyer_vehicle_config
+        WHERE deleted = 0
+    </select>
+
+    <!-- 最新车型配置只做基础合并，精确匹配和最大顺序号回退由 Service 完成。 -->
+    <select id="selectConfigRows" resultType="cn.iocoder.yudao.module.buyer.dal.dataobject.monthlynetdemand.MonthlyDemandConfigRow">
+        SELECT vehicle_model, seq_no_2026, material_desc AS host_code,
+               MAX(material_no) AS config_material_no,
+               SUM(NVL(required_quantity, 0)) AS unit_required_quantity
+        FROM buyer_vehicle_config
+        WHERE deleted = 0
+          AND import_date = (SELECT MAX(import_date) FROM buyer_vehicle_config WHERE deleted = 0)
+        GROUP BY vehicle_model, seq_no_2026, material_desc
+    </select>
+
+    <!-- 主机编码到特力编码映射；重复主机编码按现有数据取一个稳定值。 -->
+    <select id="selectCodeMappings" resultType="cn.iocoder.yudao.module.buyer.dal.dataobject.monthlynetdemand.MonthlyDemandCodeMappingRow">
+        SELECT host_code, MAX(teli_code) AS material_no, MAX(name) AS material_name
+        FROM buyer_code_config
+        WHERE deleted = 0
+        GROUP BY host_code
+    </select>
+
+    <select id="selectCodeMappingVersion" resultType="java.lang.String">
+        SELECT NVL(TO_CHAR(MAX(update_time), 'YYYYMMDDHH24MISSFF6'), 'EMPTY')
+        FROM buyer_code_config
+        WHERE deleted = 0
+    </select>
+
+    <!-- 三类数量一次返回；material_no 的范围由 Service 根据当月实际需求限定。 -->
+    <select id="selectInventoryQuantities" resultType="cn.iocoder.yudao.module.buyer.dal.dataobject.monthlynetdemand.MonthlyDemandQuantityRow">
+        SELECT 'SAP' AS source_type, material_no, SUM(NVL(available_quantity, 0)) AS quantity
+        FROM real_time_stock
+        WHERE deleted = 0 AND (status = 0 OR status IS NULL)
+          AND material_no IN
+          <foreach collection="materialNos" item="materialNo" open="(" separator="," close=")">
+              #{materialNo}
+          </foreach>
+        GROUP BY material_no
+        UNION ALL
+        SELECT 'OVERSEAS' AS source_type, item_code AS material_no,
+               SUM(NVL(available_quantity, 0)) AS quantity
+        FROM buyer_overseas_inventory
+        WHERE deleted = 0
+          AND item_code IN
+          <foreach collection="materialNos" item="materialNo" open="(" separator="," close=")">
+              #{materialNo}
+          </foreach>
+        GROUP BY item_code
+        UNION ALL
+        SELECT 'OPEN_ORDER' AS source_type, material_no, SUM(NVL(open_qty, 0)) AS quantity
+        FROM buyer_open_order
+        WHERE deleted = 0
+          AND material_no IN
+          <foreach collection="materialNos" item="materialNo" open="(" separator="," close=")">
+              #{materialNo}
+          </foreach>
+        GROUP BY material_no
+    </select>
+</mapper>

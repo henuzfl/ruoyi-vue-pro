@@ -181,5 +181,6 @@ public interface ErrorCodeConstants {
     ErrorCode OPEN_ORDER_NOT_EXISTS = new ErrorCode(1_003_012_000, "采购未清订单不存在");
     ErrorCode PRODUCTION_TRANSFER_SYNC_ERROR = new ErrorCode(1_003_013_000, "同步MES数据失败");
     ErrorCode DELIVER_NOT_EXISTS = new ErrorCode(1_003_014_000, "配送与采购报表不存在");
+    ErrorCode OVERSEAS_INVENTORY_NOT_EXISTS = new ErrorCode(1_003_015_000, "驻外库存不存在");
 
 }
