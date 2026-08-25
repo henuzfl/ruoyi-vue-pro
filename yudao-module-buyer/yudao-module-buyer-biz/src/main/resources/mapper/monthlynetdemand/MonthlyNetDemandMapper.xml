@@ -1,13 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="cn.iocoder.yudao.module.buyer.dal.mysql.monthlynetdemand.MonthlyNetDemandMapper">
-    <!-- 计划月份在导入时预先计算，避免查询阶段对日期字符串逐行执行正则。 -->
+    <!--
+        不依赖新增数据库字段，按既有日期优先级实时计算计划月份：
+        臂架上下线计划日期 > 转台计划日期 > 成台完工计划日期。
+    -->
     <select id="selectPlanRows" resultType="cn.iocoder.yudao.module.buyer.dal.dataobject.monthlynetdemand.MonthlyDemandPlanRow">
         SELECT product_model, seq_no2026, unit_quantity
-        FROM buyer_vehicle_plan p
-        WHERE p.deleted = 0
-          AND p.import_date = (SELECT MAX(import_date) FROM buyer_vehicle_plan WHERE deleted = 0)
-          AND p.plan_month = #{planMonth}
+        FROM (
+            SELECT p.*,
+                   CASE
+                       WHEN p.boom_top_bottom_plan_date IS NOT NULL
+                            AND TRIM(p.boom_top_bottom_plan_date) &lt;&gt; '/'
+                           THEN p.boom_top_bottom_plan_date
+                       WHEN p.turntable_plan_date IS NOT NULL
+                            AND TRIM(p.turntable_plan_date) &lt;&gt; '/'
+                           THEN p.turntable_plan_date
+                       WHEN p.finished_product_plan_date IS NOT NULL
+                           THEN TO_CHAR(p.finished_product_plan_date, 'YYYY/MM/DD')
+                   END AS effective_plan_date
+            FROM buyer_vehicle_plan p
+            WHERE p.deleted = 0
+              AND p.import_date = (SELECT MAX(import_date) FROM buyer_vehicle_plan WHERE deleted = 0)
+        )
+        WHERE REGEXP_SUBSTR(effective_plan_date, '[0-9]{4}') || '-' ||
+              LPAD(REGEXP_SUBSTR(effective_plan_date, '[0-9]+', 1, 2), 2, '0') = #{planMonth}
     </select>
 
     <select id="selectConfigVersion" resultType="java.lang.String">

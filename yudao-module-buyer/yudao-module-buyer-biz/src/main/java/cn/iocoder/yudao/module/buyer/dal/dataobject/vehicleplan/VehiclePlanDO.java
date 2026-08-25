@@ -39,11 +39,6 @@ public class VehiclePlanDO extends BaseDO {
     private Date importDate;
 
     /**
-     * 计划月份（yyyy-MM），用于月净需求按月快速查询
-     */
-    private String planMonth;
-
-    /**
      * 产品线
      */
     private String productLine;

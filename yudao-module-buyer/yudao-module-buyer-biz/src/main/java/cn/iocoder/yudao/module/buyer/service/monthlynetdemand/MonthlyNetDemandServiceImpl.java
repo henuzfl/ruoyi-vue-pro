@@ -72,7 +72,7 @@ public class MonthlyNetDemandServiceImpl implements MonthlyNetDemandService {
      */
     private List<MonthlyNetDemandRespVO> calculate(String planMonth) {
         long start = System.currentTimeMillis();
-        // 主机计划通过预计算的 plan_month 走索引查询，并限定为最新导入版本。
+        // 不依赖新增月份字段，由 Mapper 按现有计划日期计算月份并限定最新导入版本。
         List<MonthlyDemandPlanRow> plans = monthlyNetDemandMapper.selectPlanRows(planMonth);
         long planEnd = System.currentTimeMillis();
         ConfigCache currentConfigCache = getConfigCache();
