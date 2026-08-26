@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.iocoder.yudao.module.aps.dal.mysql.productionmaterialsupply.ProductionMaterialSupplyMapper">
+
+    <sql id="baseOrderWhere">
+        WHERE s.deleted = 0
+        <if test="reqVO.productionOrderNo != null and reqVO.productionOrderNo != ''">
+            AND s.production_order_no = #{reqVO.productionOrderNo}
+        </if>
+        <if test="reqVO.assemblyMaterialNo != null and reqVO.assemblyMaterialNo != ''">
+            AND s.assembly_material_no = #{reqVO.assemblyMaterialNo}
+        </if>
+    </sql>
+
+    <sql id="demandCtes">
+        WITH base_orders AS (
+            SELECT /*+ MATERIALIZE */ s.production_order_no,
+                   s.assembly_material_no,
+                   s.main_material_desc,
+                   s.scheduled_quantity,
+                   s.scheduled_date
+            FROM sub_order s
+            <include refid="baseOrderWhere"/>
+        ),
+        plan_agg AS (
+            SELECT mp.production_order_no,
+                   mp.assembly_material_no,
+                   MIN(mp.scheduled_date) AS scheduled_date
+            FROM aps_main_plan mp
+            JOIN (
+                SELECT DISTINCT production_order_no, assembly_material_no
+                FROM base_orders
+            ) bo ON bo.production_order_no = mp.production_order_no
+                AND bo.assembly_material_no = mp.assembly_material_no
+            WHERE mp.deleted = 0
+            GROUP BY mp.production_order_no, mp.assembly_material_no
+        ),
+        scoped_orders AS (
+            SELECT /*+ MATERIALIZE */ bo.production_order_no,
+                   bo.assembly_material_no,
+                   bo.main_material_desc,
+                   bo.scheduled_quantity,
+                   NVL(mp.scheduled_date, bo.scheduled_date) AS effective_scheduled_date
+            FROM base_orders bo
+            LEFT JOIN plan_agg mp ON mp.production_order_no = bo.production_order_no
+                AND mp.assembly_material_no = bo.assembly_material_no
+            WHERE NVL(mp.scheduled_date, bo.scheduled_date) &gt;= #{reqVO.scheduledDateStart}
+              AND NVL(mp.scheduled_date, bo.scheduled_date) &lt;= #{reqVO.scheduledDateEnd}
+        ),
+        material_agg AS (
+            SELECT material_no,
+                   MAX(material_desc) AS material_desc,
+                   MAX(procurement_type) AS procurement_type
+            FROM material_master_import
+            WHERE deleted = 0
+            GROUP BY material_no
+        ),
+        demand_agg AS (
+            SELECT so.production_order_no,
+                   so.assembly_material_no,
+                   so.main_material_desc,
+                   so.scheduled_quantity,
+                   so.effective_scheduled_date,
+                   tod.material_no,
+                   MAX(tod.material_description) AS material_description,
+                   SUM(NVL(tod.demand_quantity, 0)) AS demand_quantity,
+                   SUM(NVL(tod.outbound_accumulated, 0)) AS invested_quantity,
+                   mm.material_desc,
+                   mm.procurement_type
+            FROM scoped_orders so
+            JOIN trace_order_demand tod ON tod.order_no = so.production_order_no
+            JOIN material_agg mm ON mm.material_no = tod.material_no
+            WHERE tod.deleted = 0
+              AND mm.procurement_type IN ('E', 'F')
+            <if test="reqVO.componentMaterialNo != null and reqVO.componentMaterialNo != ''">
+                AND tod.material_no = #{reqVO.componentMaterialNo}
+            </if>
+            <if test="reqVO.procurementType != null and reqVO.procurementType != ''">
+                AND mm.procurement_type = #{reqVO.procurementType}
+            </if>
+            GROUP BY so.production_order_no, so.assembly_material_no,
+                     so.main_material_desc, so.scheduled_quantity,
+                     so.effective_scheduled_date, tod.material_no,
+                     mm.material_desc, mm.procurement_type
+        )
+    </sql>
+
+    <sql id="demandResultWhere">
+        WHERE 1 = 1
+        <if test="reqVO.materialDesc != null and reqVO.materialDesc != ''">
+            AND NVL(d.material_description, d.material_desc) LIKE '%' || #{reqVO.materialDesc} || '%'
+        </if>
+    </sql>
+
+    <select id="selectDemandRows"
+            resultType="cn.iocoder.yudao.module.aps.dal.dataobject.productionmaterialsupply.ProductionMaterialDemandRow">
+        <include refid="demandCtes"/>
+        SELECT d.production_order_no AS productionOrderNo,
+               d.assembly_material_no AS assemblyMaterialNo,
+               d.main_material_desc AS assemblyMaterialDesc,
+               NVL(d.scheduled_quantity, 0) AS assemblyDemandQuantity,
+               d.effective_scheduled_date AS scheduledDate,
+               d.material_no AS componentMaterialNo,
+               NVL(d.material_description, d.material_desc) AS componentMaterialDesc,
+               d.demand_quantity AS demandQuantity,
+               d.invested_quantity AS investedQuantity,
+               d.procurement_type AS procurementType
+        FROM demand_agg d
+        <include refid="demandResultWhere"/>
+    </select>
+
+    <select id="selectAvailableRows"
+            resultType="cn.iocoder.yudao.module.aps.dal.dataobject.productionmaterialsupply.ProductionMaterialAvailableRow">
+        WITH stock AS (
+            SELECT material_no, SUM(NVL(stock_quantity, 0)) AS stock_quantity
+            FROM real_time_stock
+            WHERE deleted = 0
+              AND material_no IN
+              <foreach collection="materialNos" item="materialNo" open="(" separator="," close=")">
+                  #{materialNo}
+              </foreach>
+            GROUP BY material_no
+        ), prod AS (
+            SELECT assembly_material_no,
+                   SUM(GREATEST(NVL(scheduled_quantity, 0) - NVL(delivered_quantity, 0), 0)) AS production_transit
+            FROM sub_order
+            WHERE deleted = 0
+              AND (system_status LIKE 'CRTD%' OR system_status LIKE 'REL%')
+              AND assembly_material_no IN
+              <foreach collection="materialNos" item="materialNo" open="(" separator="," close=")">
+                  #{materialNo}
+              </foreach>
+            GROUP BY assembly_material_no
+        )
+        SELECT NVL(stock.material_no, prod.assembly_material_no) AS materialNo,
+               NVL(stock.stock_quantity, 0) AS stockQuantity,
+               NVL(prod.production_transit, 0) AS productionTransit
+        FROM stock
+        FULL OUTER JOIN prod ON prod.assembly_material_no = stock.material_no
+    </select>
+
+    <select id="selectPurchaseRows"
+            resultType="cn.iocoder.yudao.module.aps.dal.dataobject.productionmaterialsupply.ProductionMaterialPurchaseRow">
+        SELECT boo.production_order_no AS productionOrderNo,
+               boo.material_no AS materialNo,
+               boo.material_desc AS materialDesc,
+               boo.order_date AS orderDate,
+               boo.buyer_order_no AS buyerOrderNo,
+               boo.line_item AS lineItem,
+               GREATEST(NVL(boo.open_qty,
+                   NVL(boo.order_qty, 0) - NVL(boo.received_qty, 0)), 0) AS openQuantity,
+               boo.required_arrival_date AS requiredArrivalDate,
+               boo.supplier_desc AS supplierDesc
+        FROM buyer_open_order boo
+        WHERE boo.deleted = 0
+          AND GREATEST(NVL(boo.open_qty,
+              NVL(boo.order_qty, 0) - NVL(boo.received_qty, 0)), 0) &gt; 0
+          AND (boo.production_order_no, boo.material_no) IN
+          <foreach collection="keys" item="key" open="(" separator="," close=")">
+              (#{key.productionOrderNo}, #{key.componentMaterialNo})
+          </foreach>
+        ORDER BY boo.production_order_no, boo.material_no, boo.required_arrival_date,
+                 boo.buyer_order_no, boo.line_item
+    </select>
+</mapper>
